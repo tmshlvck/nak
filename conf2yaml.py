@@ -10,9 +10,12 @@ import re
 from collections import OrderedDict,defaultdict
 import click
 
+
+debug=False
+
 def d(msg):
-  #pass
-  print(msg, file=sys.stdout)
+  if debug:
+    print(msg, file=sys.stdout)
 
 
 
@@ -176,12 +179,12 @@ class CiscoConf(BasicConf):
 
         m = c.re_match_typed(r"^\s*switchport trunk allowed vlan\s+(.+)$")
         if m:
-          ifaces[name]['allowed_vlan'] = self.normalize_list(m)
+          ifaces[name]['allowed_vlan'] = cls.normalize_list(m)
           continue
 
         m = c.re_match_typed(r"^\s*switchport trunk allowed vlan add\s+(.+)$")
         if m:
-          ifaces[name]['allowed_vlan'] += self.normalize_list(m)
+          ifaces[name]['allowed_vlan'] += cls.normalize_list(m)
           continue
 
         m = c.re_match_typed(r'^\s*(no\s+switchport)\s*$')
@@ -707,10 +710,10 @@ class OS10Conf(BasicConf):
 
   @classmethod
   def iface_filter(cls, ifname, iface):
-    if 'management' in ifname:
+    if 'mgmt' in ifname or 'management' in ifname:
       return False
 
-    if 'Vlan' in ifname:
+    if 'vlan' in ifname:
       return False
 
 
@@ -729,7 +732,6 @@ class OS10Conf(BasicConf):
       if not name in ifaces:
         ifaces[name] = OrderedDict()
         ifaces[name]['shutdown'] = False
-        ifaces[name]['type'] = 'access'
 
       for c in o.children:
         m = c.re_match_typed(r"^\s*description\s+(.+)$").strip()
@@ -765,6 +767,7 @@ class OS10Conf(BasicConf):
         m = c.re_match_typed(r'^\s*(no\s+switchport)\s*$')
         if m:
           ifaces[name]['no-switchport'] = True
+          ifaces[name]['type'] = 'no switchport'
 
         m = c.re_match_typed(r'^\s*channel-group\s+(.+)')
         if m:
@@ -802,7 +805,7 @@ class OS10Conf(BasicConf):
         i.pop('untagged', None)
         i.pop('tagged', None)
 
-      if 'no-switchport' in i and not 'lag' in i: # remove L2 and MLAG discovery ports but not MLAG downlinks
+      if 'no-switchport' in i and not 'lag' in i: # remove L3 and MLAG discovery ports but not MLAG downlinks
         to_remove.append(ifname)
 
       i.pop('no-switchport', None)
@@ -820,7 +823,7 @@ class OS10Conf(BasicConf):
     vlans = OrderedDict()
  
     for o in cp.find_objects(r"^\s*interface"):
-      vids = o.re_match_typed(r"^\s*interface Vlan([0-9]+)\s*$").strip()
+      vids = o.re_match_typed(r"^\s*interface vlan([0-9]+)\s*$").strip()
       if vids:
         vid = int(vids)
 
@@ -857,8 +860,12 @@ class OS10Conf(BasicConf):
 
 @click.command()
 @click.option('-t', '--type', 't', help="cisco|procurve|os10|")
+@click.option('-d', '--debug', 'debugparam')
 @click.argument('files', nargs=-1)
-def main(t, files):
+def main(t, debugparam, files):
+  global debug
+  debug = debugparam
+
   for f in files:
     if t == 'cisco':
       o = CiscoConf(f)
