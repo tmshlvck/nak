@@ -38,7 +38,7 @@ def confgen(t, fh):
 #  with open(yml, 'r') as fh:
   config = yaml.safe_load(fh)
     
-  jenv = jinja2.Environment(loader=jinja2.FileSystemLoader('y2b_templates'), autoescape=False)
+  jenv = jinja2.Environment(loader=jinja2.FileSystemLoader('templates'), autoescape=False)
   # funkce jenv.globals.update(community_fmt=community_fmt)
   t = jenv.get_template('%s.j2' % t)
   return t.render(config=config)
