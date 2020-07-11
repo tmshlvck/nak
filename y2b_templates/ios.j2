@@ -1,0 +1,46 @@
+{% for sw in config %}
+{%- for v in config[sw].vlans %}
+vlan {{ v }}
+  {%- if config[sw].vlans[v].name %}
+  name {{ config[sw].vlans[v].name }}
+  {% endif %}
+!
+{%- endfor %}
+
+{%- for p in config[sw].ports %}
+interface {{ p }}
+  {%- if config[sw].ports[p].descr %}
+  description {{ config[sw].ports[p].descr }}
+  {%- endif %}
+  {%- if config[sw].ports[p].shutdown %}
+  shutdown
+  {% else %}
+  no shutdown
+  {%- if config[sw].ports[p].type == 'access' %}
+  switchport mode access
+  switchport access vlan {{ config[sw].ports[p].untagged }}
+  {%- endif %}
+  {%- if config[sw].ports[p].type == 'trunk' %}
+  switchport mode trunk
+  {%- if config[sw].ports[p].untagged %}
+  switchport trunk native vlan {{ config[sw].ports[p].untagged }}
+  {%- endif %}
+  {%- if config[sw].ports[p].tagged %}
+  switchport trunk allowed vlan {% for v in config[sw].ports[p].tagged %}{{ v }},{% endfor %}{{ config[sw].ports[p].untagged }}
+  {%- endif %}
+  {%- endif %}
+  {%- if config[sw].ports[p].mtu %}
+  mtu {{ config[sw].ports[p].mtu }}
+  {%- endif %}
+  {%- if config[sw].ports[p].mlag %}
+  vpc {{ config[sw].ports[p].mlag }}
+  {%- endif %}
+  {%- if config[sw].ports[p].lag %}
+  channel-group {{ config[sw].ports[p].lag }} mode {% if config[sw].ports[p].lagmode %}{{ config[sw].ports[p].lagmode }}{% else %}on{% endif %}
+  {%- endif %}
+  {%- endif %}
+!
+{%- endfor %}
+
+{% endfor %}
+
