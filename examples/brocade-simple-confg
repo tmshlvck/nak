@@ -1,0 +1,296 @@
+ver 07.4.00dT203
+!
+!
+global-stp
+!
+!
+vlan 1 name DEFAULT-VLAN by port
+ spanning-tree
+!
+vlan 16 name TI-Management by port
+ tagged ethe 12 to 13 ethe 23 to 28 
+ untagged ethe 5 
+ spanning-tree 802-1w
+!
+vlan 32 name TI-Server by port
+ tagged ethe 11 to 13 ethe 23 to 28 
+ spanning-tree 802-1w
+!
+vlan 42 name HE-Transit by port
+ tagged ethe 22 ethe 24 
+ spanning-tree 802-1w
+!
+vlan 43 name "BGP Trenka - SoftPlus" by port
+ tagged ethe 22 to 23 
+ spanning-tree 802-1w
+!
+vlan 44 name "BGP Trenka - TV factory" by port
+ tagged ethe 23 
+ untagged ethe 17 
+ spanning-tree 802-1w
+!
+vlan 64 name TI-Cust-P by port
+ tagged ethe 12 to 13 ethe 23 to 28 
+ spanning-tree 802-1w
+!
+vlan 80 name Div-Customers by port
+ tagged ethe 23 to 24 
+ spanning-tree 802-1w
+!
+vlan 81 name Ignum by port
+ tagged ethe 23 to 24 ethe 27 to 28 
+ spanning-tree 802-1w
+!
+vlan 82 name CS-WAN by port
+ tagged ethe 23 to 24 
+ spanning-tree 802-1w
+!
+vlan 86 name Tresorus1 by port
+ tagged ethe 23 to 24 ethe 28 
+ spanning-tree 802-1w
+!
+vlan 87 name Tresorus2 by port
+ tagged ethe 23 to 24 ethe 28 
+ spanning-tree 802-1w
+!
+vlan 88 name Trenka-Serv by port
+ tagged ethe 12 to 13 ethe 23 to 28 
+ spanning-tree 802-1w
+!
+vlan 89 name AlteraCapital by port
+ tagged ethe 12 to 13 ethe 23 to 26 
+ spanning-tree 802-1w
+!
+vlan 96 name "Telekurs Services" by port
+ tagged ethe 12 to 13 ethe 23 to 26 ethe 28 
+ spanning-tree 802-1w
+!
+vlan 706 name "Diag AS5529 di-br1" by port
+ tagged ethe 14 ethe 24 
+ spanning-tree 802-1w
+!
+vlan 708 name "FS87:BGP-Link1 93.188.72.84/30" by port
+ tagged ethe 24 
+ untagged ethe 20 
+ spanning-tree 802-1w
+!
+vlan 711 name KFBoedelli by port
+ tagged ethe 9 ethe 24 
+!
+vlan 712 name KFBoedelli2 by port
+ tagged ethe 9 ethe 23 
+!
+vlan 800 name "TI backbone" by port
+ tagged ethe 22 to 24 ethe 27 to 28 
+ router-interface ve 800
+ spanning-tree 802-1w
+!
+vlan 914 name "L2-Diag-UCSP 914" by port
+ tagged ethe 14 ethe 23 
+!
+vlan 1406 name "L2-Diag-UCSP 1406" by port
+ tagged ethe 14 ethe 23 
+!
+vlan 1407 name "L2-Diag-UCSP 1407" by port
+ tagged ethe 14 ethe 23 
+!
+vlan 1408 name "L2-Diag-UCSP 1408" by port
+ tagged ethe 14 ethe 23 
+!
+vlan 1409 name "L2-Diag-UCSP 1409" by port
+ tagged ethe 14 ethe 23 
+!
+vlan 1410 name "L2-Diag-UCSP 1410" by port
+ tagged ethe 14 ethe 23 
+!
+!
+!
+!
+optical-monitor
+aaa authentication login default local
+enable snmp ve-statistics
+enable password-display
+enable super-user-password 8 xxxxxxxxxxxx
+enable aaa console
+hostname ti-ds3
+ip route 0.0.0.0 0.0.0.0 93.188.72.3
+!
+no ip source-route
+no ip icmp unreachable source-route-fail
+no ip icmp unreachable administration
+logging host 93.188.72.148
+logging buffered 1000
+logging console
+no telnet server
+username brill password 8 xxxx
+cdp run
+fdp run
+snmp-server community 1 $Si2^=d ro acl4-snmp
+snmp-server community 1 $l'WQQWUs ro acl4-snmp
+clock summer-time
+clock timezone gmt GMT+01
+sntp server 93.188.72.148 4
+
+banner motd ^C
+You are not welcome, go away now! ^C
+!
+ssh access-group acl4-ssh
+!
+!
+interface management 1
+ disable
+!
+interface ethernet 1
+ disable
+!
+interface ethernet 2
+ disable
+!
+interface ethernet 3
+ disable
+!
+interface ethernet 4
+ disable
+!
+interface ethernet 5
+ port-name Gemini:10Gig1
+ no optical-monitor
+!
+interface ethernet 6
+ disable
+!
+interface ethernet 7
+ disable
+!
+interface ethernet 8
+ disable
+!
+interface ethernet 9
+ port-name KFBoedelli
+ no fdp enable
+ no cdp enable
+ no spanning-tree
+!
+interface ethernet 10
+ disable
+!
+interface ethernet 11
+ port-name Calliope 10GigE
+ no optical-monitor
+!
+interface ethernet 12
+ no optical-monitor
+ disable
+!
+interface ethernet 13
+ port-name Maia:10GigE:vmnic2
+ no optical-monitor
+ dual-mode  16
+!
+interface ethernet 14
+ port-name "Diag Link"
+!
+interface ethernet 15
+ no optical-monitor
+ disable
+!
+interface ethernet 16
+ disable
+!
+interface ethernet 17
+ port-name "TV factory br1.tvfactory.ch e4/7"
+ no fdp enable
+ no cdp enable
+ no spanning-tree
+ sflow forwarding
+!
+interface ethernet 18
+ no optical-monitor
+ disable
+!
+interface ethernet 19
+ port-name "FS87 Link"
+ no fdp enable
+ no cdp enable
+ no spanning-tree
+ sflow forwarding
+!
+interface ethernet 20
+ port-name FS87-Link-10G
+ no fdp enable
+ no cdp enable
+ no spanning-tree
+ sflow forwarding
+!
+interface ethernet 21
+ disable
+!
+interface ethernet 22
+ port-name "SoftPlus SP-zh-eq1 port 1/2/4"
+ no optical-monitor
+ no fdp enable
+ no cdp enable
+ no spanning-tree
+ sflow forwarding
+!
+interface ethernet 23
+ port-name ti-ds6:e24 over ComputerLine CWDM
+ sflow forwarding
+!
+interface ethernet 24
+ port-name ti-ds4:e2/3/1 (ICT) over GastUndCom
+ sflow forwarding
+!
+interface ethernet 25
+ port-name Maia:1GigE:vmnic0
+ dual-mode  16
+ disable
+ sflow forwarding
+!
+interface ethernet 26
+ disable
+!
+interface ethernet 27
+ port-name ti-as2:Gi0/1
+ pvst-mode
+ sflow forwarding
+!
+interface ethernet 28
+ port-name m-port-vlan800
+ disable
+!
+interface ve 800
+ ip address 93.188.72.7 255.255.255.224
+!
+!
+!
+ip access-list standard acl4-snmp
+ permit host 93.188.72.148 
+ permit host 217.31.53.68 
+ deny any log 
+!
+ip access-list standard acl4-ssh
+ remark TI net
+ permit 93.188.72.0 0.0.7.255 
+ permit 193.16.211.0 0.0.0.255 
+ remark TI out
+ permit 217.31.53.64 0.0.0.15 
+ remark Cablecom
+ permit 80.219.144.0 0.0.0.255 
+ remark Cyberlink
+ permit 62.12.192.0 0.0.63.255 
+ remark Stan
+ permit host 91.214.169.168 
+ remark Markus
+ permit host 93.189.66.110 
+!
+!
+sflow enable
+!
+!
+!
+ip ssh  authentication-retries 5
+ip ssh  idle-time 240
+!
+!
+end

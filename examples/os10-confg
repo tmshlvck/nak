@@ -1,0 +1,453 @@
+! Version 10.5.1.2
+! Last configuration change at Jun  24 10:01:02 2020
+!
+ip vrf default
+!
+ip vrf management
+  interface management
+!
+ip name-server 2001:1ab0:b0f4:53::53
+hostname snake
+iscsi target port 860
+iscsi target port 3260
+password-attributes min-length 6
+system-user linuxadmin password xxxxxxxx
+username admin password xxxxxxxxxxxxx role sysadmin priv-lvl 15
+username th password xxxxxxxxxxx role sysadmin priv-lvl 15
+username th sshkey "ssh-rsa xxxxxw== tmshlvck@gmail.com"
+aaa authentication login default local
+aaa authentication login console local
+!
+class-map type application class-iscsi
+!
+policy-map type application policy-iscsi
+!
+port-group 1/1/1
+ mode Eth 25g-4x
+!
+port-group 1/1/2
+ mode Eth 25g-4x
+!
+port-group 1/1/3
+ mode Eth 25g-4x
+!
+port-group 1/1/4
+ mode Eth 25g-4x
+!
+port-group 1/1/5
+ mode Eth 25g-4x
+!
+port-group 1/1/6
+ mode Eth 25g-4x
+!
+port-group 1/1/7
+ mode Eth 25g-4x
+!
+port-group 1/1/8
+ mode Eth 25g-4x
+!
+port-group 1/1/9
+ mode Eth 25g-4x
+!
+port-group 1/1/10
+ mode Eth 25g-4x
+!
+port-group 1/1/11
+ mode Eth 25g-4x
+!
+port-group 1/1/12
+ mode Eth 10g-4x
+!
+port-group 1/1/13
+ mode Eth 100g-2x
+!
+port-group 1/1/14
+ mode Eth 100g-2x
+!
+port-group 1/1/15
+ mode Eth 100g-1x
+!
+port-group 1/1/16
+ mode Eth 100g-1x
+!
+port-group 1/1/17
+ mode Eth 100g-1x
+!
+port-group 1/1/18
+ mode Eth 100g-1x
+!
+interface vlan1
+ no shutdown
+!
+interface vlan9
+ no shutdown
+ ipv6 address autoconfig
+!
+interface vlan100
+ no shutdown
+!
+interface vlan135
+ description PVE-A
+ no shutdown
+!
+interface port-channel1
+ description itchy+scratchy:Po1
+ no shutdown
+ switchport mode trunk
+ switchport access vlan 1
+ switchport trunk allowed vlan 9,100,135
+ mtu 9022
+ vlt-port-channel 1
+!
+interface port-channel101
+ description pve-a-01
+ no shutdown
+ switchport mode trunk
+ switchport access vlan 1
+ switchport trunk allowed vlan 100,135
+ mtu 9022
+ vlt-port-channel 101
+!
+interface port-channel102
+ description pve-a-02
+ no shutdown
+ switchport mode trunk
+ switchport access vlan 1
+ switchport trunk allowed vlan 100,135
+ mtu 9022
+ vlt-port-channel 102
+!
+interface port-channel103
+ description pve-a-03
+ no shutdown
+ switchport mode trunk
+ switchport access vlan 1
+ switchport trunk allowed vlan 100,135
+ mtu 9022
+ vlt-port-channel 103
+!
+interface port-channel104
+ description pve-a-04
+ no shutdown
+ switchport mode trunk
+ switchport access vlan 1
+ switchport trunk allowed vlan 100,135
+ mtu 9022
+ vlt-port-channel 104
+!
+interface port-channel105
+ description pve-a-05
+ no shutdown
+ switchport mode trunk
+ switchport access vlan 1
+ switchport trunk allowed vlan 100,135
+ mtu 9022
+ vlt-port-channel 105
+!
+interface mgmt1/1/1
+ no shutdown
+ ipv6 address autoconfig
+!
+interface ethernet1/1/1
+ description pve-a-01:e0
+ no shutdown
+ channel-group 101 mode active
+ no switchport
+ flowcontrol receive on
+!
+interface ethernet1/1/2
+ description pve-a-02:e0
+ no shutdown
+ channel-group 102 mode active
+ no switchport
+ flowcontrol receive on
+!
+interface ethernet1/1/3
+ description pve-a-03:e0
+ no shutdown
+ channel-group 103 mode active
+ no switchport
+ flowcontrol receive on
+!
+interface ethernet1/1/4
+ description pve-a-04:e0
+ no shutdown
+ channel-group 104 mode active
+ no switchport
+ flowcontrol receive on
+!
+interface ethernet1/1/5
+ description pve-a-05:e0
+ no shutdown
+ channel-group 105 mode active
+ no switchport
+ flowcontrol receive on
+!
+interface ethernet1/1/6
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/7
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/8
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/9
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/10
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/11
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/12
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/13
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/14
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/15
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/16
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/17
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/18
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/19
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/20
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/21
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/22
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/23
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/24
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/25
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/26
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/27
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/28
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/29
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/30
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/31
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/32
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/33
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/34
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/35
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/36
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/37
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/38
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/39
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/40
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/41
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/42
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/43
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/44
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/45:1
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/46:1
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/47:1
+ description itchy:e1/1/47:1
+ no shutdown
+ channel-group 1 mode active
+ no switchport
+ flowcontrol receive off
+!
+interface ethernet1/1/48:1
+ description lab-uplink
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/49
+ description gloria:e1/1/49
+ no shutdown
+ no switchport
+ flowcontrol receive off
+!
+interface ethernet1/1/50
+ description gloria:e1/1/50
+ no shutdown
+ no switchport
+ flowcontrol receive off
+!
+interface ethernet1/1/51
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/52
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/53
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/54
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/55
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+interface ethernet1/1/56
+ shutdown
+ switchport access vlan 1
+ flowcontrol receive off
+!
+vlt-domain 1
+ discovery-interface ethernet1/1/49-1/1/50
+ peer-routing
+ vlt-mac 00:15:46:30:00:01
+!
+snmp-server contact "Contact Support"
+!
+telemetry

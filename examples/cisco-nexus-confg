@@ -1,0 +1,512 @@
+
+!Command: show running-config
+!Time: Sat Dec 28 14:59:53 2019
+
+version 7.0(3)I7(3)
+hostname de
+vdc de id 1
+  limit-resource vlan minimum 16 maximum 4094
+  limit-resource vrf minimum 2 maximum 4096
+  limit-resource port-channel minimum 0 maximum 104
+  limit-resource u4route-mem minimum 128 maximum 128
+  limit-resource u6route-mem minimum 96 maximum 96
+  limit-resource m4route-mem minimum 58 maximum 58
+  limit-resource m6route-mem minimum 8 maximum 8
+
+feature telnet
+cfs eth distribute
+feature interface-vlan
+feature lacp
+feature vpc
+feature lldp
+feature vtp
+
+no password strength-check
+username admin password 5 xxxxxxxxxxxxxxxxxxxxx  role network-admin
+
+banner motd #Nexus 3500 Switch
+#
+
+ssh key rsa 2048 
+ip domain-lookup
+ip domain-name switch.ignum.cz
+service unsupported-transceiver
+ip access-list acl-snmp
+  10 permit ip 62.109.128.20/32 any 
+  20 permit ip 217.31.48.13/32 any 
+ip access-list copp-system-acl-bfd
+  10 permit udp any any eq 3784 
+  20 permit udp any any eq 3785 
+ip access-list copp-system-acl-eigrp
+  10 permit eigrp any any 
+ip access-list copp-system-acl-ftp
+  10 permit tcp any any eq ftp-data 
+  20 permit tcp any any eq ftp 
+  30 permit tcp any eq ftp-data any 
+  40 permit tcp any eq ftp any 
+ip access-list copp-system-acl-http
+  10 permit tcp any any eq www 
+  20 permit tcp any any eq 443 
+ip access-list copp-system-acl-icmp
+  10 permit icmp any any 
+ip access-list copp-system-acl-ntp
+  10 permit udp any any eq ntp 
+  20 permit udp any eq ntp any 
+ip access-list copp-system-acl-ping
+  10 permit icmp any any echo 
+  20 permit icmp any any echo-reply 
+ip access-list copp-system-acl-routingproto1
+  10 permit tcp any any eq bgp 
+  20 permit tcp any eq bgp any 
+  30 permit tcp any any eq 639 
+  40 permit tcp any eq 639 any 
+  50 permit ospf any any 
+ip access-list copp-system-acl-routingproto2
+  10 permit 112 any 224.0.0.0/24 
+ip access-list copp-system-acl-snmp
+  10 permit udp any any eq snmp 
+  20 permit udp any eq snmp any 
+  30 permit udp any any eq snmptrap 
+ip access-list copp-system-acl-ssh
+  10 permit tcp any any eq 22 
+  20 permit tcp any eq 22 any 
+ip access-list copp-system-acl-stftp
+  10 permit udp any any eq tftp 
+  20 permit udp any any eq 1758 
+  30 permit udp any eq tftp any 
+  40 permit udp any eq 1758 any 
+  50 permit tcp any any eq 115 
+  60 permit tcp any eq 115 any 
+ip access-list copp-system-acl-tacacsradius
+  10 permit tcp any any eq tacacs 
+  20 permit tcp any eq tacacs any 
+  30 permit udp any any eq 1812 
+  40 permit udp any any eq 1813 
+  50 permit udp any any eq 1645 
+  60 permit udp any any eq 1646 
+  70 permit udp any eq 1812 any 
+  80 permit udp any eq 1813 any 
+  90 permit udp any eq 1645 any 
+  100 permit udp any eq 1646 any 
+ip access-list copp-system-acl-telnet
+  10 permit tcp any any eq telnet 
+  20 permit tcp any any eq 107 
+  30 permit tcp any eq telnet any 
+  40 permit tcp any eq 107 any 
+ip access-list copp-system-dhcp-relay
+  10 permit udp any eq bootps any eq bootps 
+class-map type control-plane match-any copp-ftp
+  match access-group name copp-system-acl-ftp
+class-map type control-plane match-any copp-http
+  match access-group name copp-system-acl-http
+class-map type control-plane match-any copp-icmp
+  match access-group name copp-system-acl-icmp
+class-map type control-plane match-any copp-ntp
+  match access-group name copp-system-acl-ntp
+class-map type control-plane match-any copp-s-arp
+class-map type control-plane match-any copp-s-bfd
+  match access-group name copp-system-acl-bfd
+class-map type control-plane match-any copp-s-bpdu
+class-map type control-plane match-any copp-s-cdp
+class-map type control-plane match-any copp-s-dai
+class-map type control-plane match-any copp-s-default
+class-map type control-plane match-any copp-s-dhcpreq
+class-map type control-plane match-any copp-s-dhcpresp
+  match access-group name copp-system-dhcp-relay
+class-map type control-plane match-any copp-s-dpss
+class-map type control-plane match-any copp-s-eigrp
+  match access-group name copp-system-acl-eigrp
+class-map type control-plane match-any copp-s-glean
+class-map type control-plane match-any copp-s-igmp
+class-map type control-plane match-any copp-s-ip-nat
+class-map type control-plane match-any copp-s-ip-options
+class-map type control-plane match-any copp-s-ipmc-g-hit
+class-map type control-plane match-any copp-s-ipmc-rpf-fail-g
+class-map type control-plane match-any copp-s-ipmc-rpf-fail-sg
+class-map type control-plane match-any copp-s-ipmcmiss
+class-map type control-plane match-any copp-s-l2switched
+class-map type control-plane match-any copp-s-l3destmiss
+class-map type control-plane match-any copp-s-l3mtufail
+class-map type control-plane match-any copp-s-l3slowpath
+class-map type control-plane match-any copp-s-lacp
+class-map type control-plane match-any copp-s-lldp
+class-map type control-plane match-any copp-s-mpls
+class-map type control-plane match-any copp-s-pimautorp
+class-map type control-plane match-any copp-s-pimreg
+class-map type control-plane match-any copp-s-ping
+  match access-group name copp-system-acl-ping
+class-map type control-plane match-any copp-s-ptp
+class-map type control-plane match-any copp-s-routingProto1
+  match access-group name copp-system-acl-routingproto1
+class-map type control-plane match-any copp-s-routingProto2
+  match access-group name copp-system-acl-routingproto2
+class-map type control-plane match-any copp-s-selfIp
+class-map type control-plane match-any copp-s-ttl1
+class-map type control-plane match-any copp-s-v6routingProto2
+class-map type control-plane match-any copp-s-vxlan
+class-map type control-plane match-any copp-snmp
+  match access-group name copp-system-acl-snmp
+class-map type control-plane match-any copp-ssh
+  match access-group name copp-system-acl-ssh
+class-map type control-plane match-any copp-stftp
+  match access-group name copp-system-acl-stftp
+class-map type control-plane match-any copp-tacacsradius
+  match access-group name copp-system-acl-tacacsradius
+class-map type control-plane match-any copp-telnet
+  match access-group name copp-system-acl-telnet
+policy-map type control-plane copp-system-policy 
+  class copp-s-default
+    police pps 400 
+  class copp-s-l2switched
+    police pps 200 
+  class copp-s-ping
+    police pps 100 
+  class copp-s-l3destmiss
+    police pps 100 
+  class copp-s-glean
+    police pps 500 
+  class copp-s-selfIp
+    police pps 500 
+  class copp-s-l3mtufail
+    police pps 100 
+  class copp-s-ttl1
+    police pps 100 
+  class copp-s-ipmcmiss
+    police pps 400 
+  class copp-s-l3slowpath
+    police pps 100 
+  class copp-s-dhcpreq
+    police pps 300 
+  class copp-s-dhcpresp
+    police pps 300 
+  class copp-s-dai
+    police pps 300 
+  class copp-s-igmp
+    police pps 400 
+  class copp-s-eigrp
+    police pps 200 
+  class copp-s-pimreg
+    police pps 200 
+  class copp-s-pimautorp
+    police pps 200 
+  class copp-s-routingProto2
+    police pps 1300 
+  class copp-s-v6routingProto2
+    police pps 1300 
+  class copp-s-routingProto1
+    police pps 1000 
+  class copp-s-arp
+    police pps 200 
+  class copp-s-ptp
+    police pps 1000 
+  class copp-s-vxlan
+    police pps 1000 
+  class copp-s-bfd
+    police pps 350 
+  class copp-s-bpdu
+    police pps 12000 
+  class copp-s-dpss
+    police pps 1000 
+  class copp-s-mpls
+    police pps 100 
+  class copp-s-ip-options
+    police pps 100 
+  class copp-s-ip-nat
+    police pps 100 
+  class copp-s-ipmc-g-hit
+    police pps 400 
+  class copp-s-ipmc-rpf-fail-g
+    police pps 400 
+  class copp-s-ipmc-rpf-fail-sg
+    police pps 400 
+  class copp-s-cdp
+    police pps 400 
+  class copp-s-lacp
+    police pps 400 
+  class copp-s-lldp
+    police pps 200 
+  class copp-icmp
+    police pps 200 
+  class copp-telnet
+    police pps 500 
+  class copp-ssh
+    police pps 500 
+  class copp-snmp
+    police pps 500 
+  class copp-ntp
+    police pps 100 
+  class copp-tacacsradius
+    police pps 400 
+  class copp-stftp
+    police pps 400 
+  class copp-ftp
+    police pps 100 
+  class copp-http
+    police pps 100 
+control-plane
+  service-policy input copp-system-policy 
+snmp-server location GTS-716
+snmp-server user admin network-admin auth md5 0x9316f4c45ed481da0c3ee92349dc3c0c priv 0x9316f4c45ed481da0c3ee92349dc3c0c localizedkey
+rmon event 1 log trap public description FATAL(1) owner PMON@FATAL
+rmon event 2 log trap public description CRITICAL(2) owner PMON@CRITICAL
+rmon event 3 log trap public description ERROR(3) owner PMON@ERROR
+rmon event 4 log trap public description WARNING(4) owner PMON@WARNING
+rmon event 5 log trap public description INFORMATION(5) owner PMON@INFO
+snmp-server community ignum group network-operator
+snmp-server community ignum use-acl acl-snmp
+
+ip route 0.0.0.0/0 62.109.135.1
+vlan 1,8-9,16-34,40-42,45-48,51-63,65,67,70-72,120-122,130,140-147,202-203,209-211,213,215,700-701,800,804-805,999,1002-1005
+
+spanning-tree vlan 1-1023 priority 16384
+vrf context management
+no port-channel load-balance resilient
+
+no hardware profile ecmp resilient
+vpc domain 1
+  peer-keepalive destination 192.168.69.1
+  auto-recovery
+vlan configuration 1,8-9,16-34,40-42,45-48,51-63,65,67,70-72,120-122,130,140-147,202-203,209-211,213,215,700-701,800,804-805,999,1002-1005
+
+
+interface Vlan1
+
+interface Vlan9
+  no shutdown
+  ip address 62.109.135.222/24
+
+interface port-channel8
+  description vdsnode01.core.ignum.cz
+  switchport mode trunk
+  switchport trunk allowed vlan 18,25,29
+  speed 10000
+  vpc 8
+
+interface port-channel10
+  description vmnode01.core.ignum.cz
+  switchport mode trunk
+  switchport trunk allowed vlan 20-22,25-27,33,800
+  speed 10000
+  vpc 10
+
+interface port-channel11
+  description vmnode02.core.ignum.cz
+  switchport mode trunk
+  switchport trunk allowed vlan 20-21,25-27,140,800
+  speed 10000
+  vpc 11
+
+interface port-channel13
+  description vmnode03.core.ignum.cz
+  switchport mode trunk
+  switchport trunk allowed vlan 20,25-27,800
+  speed 10000
+  vpc 13
+
+interface port-channel14
+  description vdsnode04.core.ignum.cz
+  switchport mode trunk
+  switchport trunk allowed vlan 18,25,29
+  speed 10000
+  vpc 14
+
+interface port-channel17
+  description vmnode04.core.ignum.cz
+  switchport mode trunk
+  switchport trunk allowed vlan 18,20-21,25-27,29,40,800
+  speed 10000
+  vpc 17
+
+interface port-channel18
+  description vmnode05.core.ignum.cz
+  switchport mode trunk
+  switchport trunk allowed vlan 20-21,25-27,142
+  vpc 18
+
+interface port-channel999
+  description vPC peer-link (facing dd)
+  switchport mode trunk
+  spanning-tree port type network
+  speed 10000
+  vpc peer-link
+
+interface Ethernet1/1
+  description dd.switch.ignum.cz:e1/1 vPC peer-link port-a
+  switchport mode trunk
+  channel-group 999
+
+interface Ethernet1/2
+  description dd.switch.ignum.cz:e1/2 vPC peer-link port-b
+  switchport mode trunk
+  channel-group 999
+
+interface Ethernet1/3
+  description vmnode01.core.ignum.cz:e1
+  switchport mode trunk
+  switchport trunk allowed vlan 20-22,25-27,33,800
+  channel-group 10 mode active
+
+interface Ethernet1/4
+  description vmnode02.core.ignum.cz:e1
+  switchport mode trunk
+  switchport trunk allowed vlan 20-21,25-27,140,800
+  channel-group 11 mode active
+
+interface Ethernet1/5
+  shutdown
+
+interface Ethernet1/6
+  description vmnode03.core.ignum.cz:e1
+  switchport mode trunk
+  switchport trunk allowed vlan 20,25-27,800
+  channel-group 13 mode active
+
+interface Ethernet1/7
+  shutdown
+
+interface Ethernet1/8
+  description vdsnode01.core.ignum.cz
+  switchport mode trunk
+  switchport trunk allowed vlan 18,25,29
+  speed 10000
+  channel-group 8 mode active
+
+interface Ethernet1/9
+  shutdown
+
+interface Ethernet1/10
+  description vmnode04.core.ignum.cz:eth3
+  switchport mode trunk
+  switchport trunk allowed vlan 18,20-21,25-27,29,40,800
+  channel-group 17 mode active
+
+interface Ethernet1/11
+  shutdown
+
+interface Ethernet1/12
+  shutdown
+
+interface Ethernet1/13
+  description vmnode05.core.ignum.cz:e1
+  switchport mode trunk
+  switchport trunk allowed vlan 20-21,25-27,142
+  channel-group 18 mode active
+
+interface Ethernet1/14
+  description vdsnode04.core.ignum.cz:e1
+  switchport mode trunk
+  switchport trunk allowed vlan 18,25,29
+  channel-group 14 mode active
+
+interface Ethernet1/15
+  shutdown
+
+interface Ethernet1/16
+  shutdown
+
+interface Ethernet1/17
+  shutdown
+
+interface Ethernet1/18
+  shutdown
+
+interface Ethernet1/19
+  shutdown
+
+interface Ethernet1/20
+  shutdown
+
+interface Ethernet1/21
+  shutdown
+
+interface Ethernet1/22
+  shutdown
+
+interface Ethernet1/23
+  shutdown
+
+interface Ethernet1/24
+  shutdown
+
+interface Ethernet1/25
+  shutdown
+
+interface Ethernet1/26
+  shutdown
+
+interface Ethernet1/27
+  shutdown
+
+interface Ethernet1/28
+  shutdown
+
+interface Ethernet1/29
+  shutdown
+
+interface Ethernet1/30
+  shutdown
+
+interface Ethernet1/31
+  shutdown
+
+interface Ethernet1/32
+  shutdown
+
+interface Ethernet1/33
+  shutdown
+
+interface Ethernet1/34
+  shutdown
+
+interface Ethernet1/35
+  shutdown
+
+interface Ethernet1/36
+  shutdown
+
+interface Ethernet1/37
+  shutdown
+
+interface Ethernet1/38
+  shutdown
+
+interface Ethernet1/39
+  shutdown
+
+interface Ethernet1/40
+  shutdown
+
+interface Ethernet1/41
+  shutdown
+
+interface Ethernet1/42
+  shutdown
+
+interface Ethernet1/43
+  shutdown
+
+interface Ethernet1/44
+  shutdown
+
+interface Ethernet1/45
+  shutdown
+
+interface Ethernet1/46
+  shutdown
+
+interface Ethernet1/47
+  shutdown
+
+interface Ethernet1/48
+  description d6.switch.ignum.cz:Te1/0/1
+  switchport mode trunk
+
+interface mgmt0
+  description vPC keepalive interface (facing dd:mgmt0)
+  vrf member management
+  ip address 192.168.69.2/24
+line console
+line vty
+boot nxos bootflash:/nxos.7.0.3.I7.3.bin 
+
+

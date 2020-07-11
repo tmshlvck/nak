@@ -1,0 +1,206 @@
+; J4899C Configuration Editor; Created on release #H.10.119
+
+hostname "c0.switch.ignum.cz" 
+snmp-server contact "tech@ignum.cz" 
+snmp-server location "IgZ-00" 
+max-vlans 253 
+time timezone 60 
+time daylight-time-rule Middle-Europe-and-Portugal 
+no cdp run 
+fastboot 
+no web-management 
+no telnet-server 
+interface 1 
+   name "1.office.ignum.cz" 
+exit
+interface 2 
+   name "2.office.ignum.cz" 
+exit
+interface 3 
+   name "3.office.ignum.cz" 
+exit
+interface 4 
+   name "4.office.ignum.cz" 
+exit
+interface 5 
+   name "5.office.ignum.cz" 
+exit
+interface 6 
+   name "6.office.ignum.cz" 
+exit
+interface 7 
+   name "7.office.ignum.cz" 
+exit
+interface 8 
+   name "8.office.ignum.cz" 
+exit
+interface 9 
+   name "9.office.ignum.cz" 
+exit
+interface 10 
+   name "10.office.ignum.cz" 
+exit
+interface 11 
+   name "11.office.ignum.cz" 
+exit
+interface 12 
+   name "12.office.ignum.cz" 
+exit
+interface 13 
+   name "13.office.ignum.cz" 
+exit
+interface 14 
+   name "14.office.ignum.cz" 
+exit
+interface 15 
+   name "15.office.ignum.cz" 
+exit
+interface 16 
+   name "16.office.ignum.cz" 
+exit
+interface 17 
+   name "17.office.ignum.cz" 
+exit
+interface 18 
+   name "18.office.ignum.cz" 
+exit
+interface 19 
+   name "19.office.ignum.cz" 
+exit
+interface 20 
+   name "20.office.ignum.cz" 
+exit
+interface 21 
+   name "21.office.ignum.cz" 
+exit
+interface 22 
+   name "22.office.ignum.cz" 
+exit
+interface 23 
+   name "23.office.ignum.cz" 
+exit
+interface 24 
+   name "24.office.ignum.cz" 
+exit
+interface 25 
+   name "25.office.ignum.cz" 
+exit
+interface 26 
+   name "26.office.ignum.cz" 
+exit
+interface 27 
+   name "27.office.ignum.cz" 
+exit
+interface 28 
+   name "28.office.ignum.cz" 
+exit
+interface 29 
+   name "29.office.ignum.cz" 
+exit
+interface 30 
+   name "30.office.ignum.cz" 
+exit
+interface 31 
+   name "31.office.ignum.cz" 
+exit
+interface 32 
+   name "32.office.ignum.cz" 
+exit
+interface 33 
+   name "33.office.ignum.cz" 
+exit
+interface 34 
+   name "34.office.ignum.cz" 
+exit
+interface 35 
+   name "35.office.ignum.cz" 
+exit
+interface 36 
+   name "36.office.ignum.cz" 
+exit
+interface 37 
+   name "37.office.ignum.cz" 
+exit
+interface 38 
+   name "38.office.ignum.cz" 
+exit
+interface 39 
+   name "39.office.ignum.cz" 
+exit
+interface 40 
+   name "40.office.ignum.cz" 
+exit
+interface 41 
+   name "41.office.ignum.cz" 
+exit
+interface 42 
+   name "42.office.ignum.cz" 
+exit
+interface 43 
+   name "43.office.ignum.cz" 
+exit
+interface 44 
+   name "44.office.ignum.cz" 
+exit
+interface 45 
+   name "45.office.ignum.cz" 
+exit
+interface 46 
+   name "46.office.ignum.cz" 
+exit
+interface 47 
+   name "47.office.ignum.cz" 
+exit
+interface 48 
+   name "48.office.ignum.cz" 
+exit
+interface 49 
+   name "bb.switch.ignum.cz:23" 
+   no lacp
+exit
+interface 50 
+   name "bb.switch.ignum.cz:24" 
+   no lacp
+exit
+trunk 49-50 Trk1 Trunk 
+ip default-gateway 62.109.135.1 
+no ip source-route 
+ip timep manual 217.31.48.13 
+logging facility local0 
+logging 217.31.48.13 
+snmp-server community "public" Unrestricted 
+snmp-server community "ignum" Operator 
+vlan 1 
+   name "DEFAULT_VLAN" 
+   untagged Trk1 
+   no ip address 
+   no untagged 1-48 
+   exit 
+vlan 9 
+   name "GTS service" 
+   ip address 62.109.135.192 255.255.255.0 
+   tagged Trk1 
+   exit 
+vlan 140 
+   name "Office-main" 
+   untagged 1-48 
+   tagged Trk1 
+   exit 
+vlan 142 
+   name "Office-test" 
+   tagged Trk1 
+   exit 
+no lldp run 
+no dhcp-relay 
+aaa authentication ssh login public-key 
+no cdp enable 1-48 
+spanning-tree
+spanning-tree Trk1 priority 4
+spanning-tree priority 15
+ip ssh
+ip ssh key-size 1024
+ip ssh timeout 32
+no tftp server
+password manager
+password operator
+

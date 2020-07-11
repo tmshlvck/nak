@@ -1,0 +1,401 @@
+
+!
+! Last configuration change at 23:10:44 CEST Wed Jul 24 2019 by brill
+! NVRAM config last updated at 23:10:46 CEST Wed Jul 24 2019 by brill
+!
+version 12.2
+no service pad
+service timestamps debug datetime msec
+service timestamps log datetime msec localtime
+service password-encryption
+!
+hostname burns
+!
+boot-start-marker
+boot-end-marker
+!
+logging count
+logging buffered informational
+logging console warnings
+logging monitor warnings
+enable secret 5 xxxxx
+!
+username brill secret 5 xxxxxxxxx
+!
+!
+aaa new-model
+!
+!
+aaa authentication attempts login 1
+aaa authentication banner "You are not welcome, go away now!"
+aaa authentication fail-message "Invalid username or password."
+aaa authentication username-prompt "burns login: "
+aaa authentication login default local
+aaa authorization exec default local 
+!
+!
+!
+aaa session-id common
+clock timezone CET 1
+clock summer-time CEST recurring last Sun Mar 2:00 last Sun Oct 3:00
+system mtu routing 1500
+ip routing
+no ip domain-lookup
+ip domain-name switch.ignum.cz
+ip name-server 217.31.49.104
+ip name-server 217.31.53.53
+!
+!
+ipv6 unicast-routing
+!
+!
+!
+!
+!
+!
+port-channel load-balance src-dst-ip
+file prompt quiet
+!
+spanning-tree mode rapid-pvst
+spanning-tree extend system-id
+spanning-tree vlan 1-1023 priority 16384
+!
+vlan internal allocation policy ascending
+!
+ip ssh authentication-retries 1
+ip ssh source-interface Vlan9
+ip ssh version 2
+!
+!
+!
+interface Port-channel1
+ description ned.backbone.ignum.cz
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+!
+interface Port-channel2
+ description maude.backbone.ignum.cz
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+!
+interface GigabitEthernet0/1
+ description guest.wifi.ignum.cz
+ switchport access vlan 143
+ switchport mode access
+ spanning-tree portfast
+!
+interface GigabitEthernet0/2
+ shutdown
+!
+interface GigabitEthernet0/3
+ shutdown
+!
+interface GigabitEthernet0/4
+ description a0.switch.ignum.cz:48
+ switchport trunk encapsulation dot1q
+ switchport trunk allowed vlan 1,9,10
+ switchport mode trunk
+ no cdp enable
+!
+interface GigabitEthernet0/5
+ shutdown
+!
+interface GigabitEthernet0/6
+ shutdown
+!
+interface GigabitEthernet0/7
+ shutdown
+!
+interface GigabitEthernet0/8
+ shutdown
+!
+interface GigabitEthernet0/9
+ description c1.switch.ignum.cz:24
+ switchport trunk encapsulation dot1q
+ switchport trunk allowed vlan 1,9,10,33,40,142
+ switchport mode trunk
+ no cdp enable
+!
+interface GigabitEthernet0/10
+ shutdown
+!
+interface GigabitEthernet0/11
+ description cf.switch.ignum.cz:48
+ switchport trunk encapsulation dot1q
+ switchport trunk allowed vlan 1,9,30,33,40,130,142
+ switchport mode trunk
+ no cdp enable
+!
+interface GigabitEthernet0/12
+ shutdown
+!
+interface GigabitEthernet0/13
+ shutdown
+!
+interface GigabitEthernet0/14
+ shutdown
+!
+interface GigabitEthernet0/15
+ description "d1.switch.ignum.cz:47"
+ switchport trunk encapsulation dot1q
+ switchport trunk allowed vlan 1,9,20,25-27,40,120,122,140
+ switchport mode trunk
+ shutdown
+ no cdp enable
+!
+interface GigabitEthernet0/16
+ shutdown
+!
+interface GigabitEthernet0/17
+ description c8.switch.ignum.cz:49
+ switchport trunk encapsulation dot1q
+ switchport trunk allowed vlan 1,9,10,26,30-34,40,41,57,121,130,140,142
+ switchport mode trunk
+ no cdp enable
+!
+interface GigabitEthernet0/18
+ shutdown
+!
+interface GigabitEthernet0/19
+ description scio.farm.ignum.cz
+ switchport access vlan 67
+ switchport mode access
+ speed 1000
+ no cdp enable
+ spanning-tree portfast
+ spanning-tree bpdufilter enable
+!
+interface GigabitEthernet0/20
+ description eddie.wifi.ignum.cz
+ switchport access vlan 143
+ switchport mode access
+ spanning-tree portfast
+!
+interface GigabitEthernet0/21
+ shutdown
+!
+interface GigabitEthernet0/22
+ shutdown
+!
+interface GigabitEthernet0/23
+ description fw02a.ipmi.igns.cz
+ switchport access vlan 30
+ switchport mode access
+ spanning-tree portfast
+!
+interface GigabitEthernet0/24
+ shutdown
+!
+interface GigabitEthernet0/25
+ shutdown
+!
+interface GigabitEthernet0/26
+ description fw02b.ipmi.igns.cz
+ switchport access vlan 30
+ switchport mode access
+ spanning-tree portfast
+!
+interface GigabitEthernet0/27
+ shutdown
+!
+interface GigabitEthernet0/28
+ description ripeprobe.core.ignum.cz
+ switchport access vlan 143
+ switchport mode access
+ no cdp enable
+ spanning-tree portfast
+!
+interface GigabitEthernet0/29
+ shutdown
+!
+interface GigabitEthernet0/30
+ shutdown
+!
+interface GigabitEthernet0/31
+ shutdown
+!
+interface GigabitEthernet0/32
+ description b2.switch.ignum.cz:49
+ switchport trunk encapsulation dot1q
+ switchport trunk allowed vlan 1,9,26,30-34,40,53,130,142
+ switchport mode trunk
+ no cdp enable
+!
+interface GigabitEthernet0/33
+ description "Own Wikidi - GTS-719 pp1/1"
+ switchport access vlan 51
+ switchport mode access
+ no cdp enable
+ spanning-tree portfast
+ spanning-tree guard root
+!
+interface GigabitEthernet0/34
+ shutdown
+!
+interface GigabitEthernet0/35
+ shutdown
+!
+interface GigabitEthernet0/36
+ description a7.switch.ignum.cz:48
+ switchport trunk encapsulation dot1q
+ switchport trunk allowed vlan 1,9,26,30-34,40,41,130,142
+ switchport mode trunk
+ no cdp enable
+ spanning-tree cost 8
+!
+interface GigabitEthernet0/37
+ shutdown
+!
+interface GigabitEthernet0/38
+ shutdown
+!
+interface GigabitEthernet0/39
+ shutdown
+!
+interface GigabitEthernet0/40
+ description b1.switch.ignum.cz:49
+ switchport trunk encapsulation dot1q
+ switchport trunk allowed vlan 1,9
+ switchport mode trunk
+ no cdp enable
+!
+interface GigabitEthernet0/41
+ shutdown
+!
+interface GigabitEthernet0/42
+ description a6.switch.ignum.cz:49
+ switchport trunk encapsulation dot1q
+ switchport trunk allowed vlan 1,8,9,30-34,40,41,121,130,142,210
+ switchport mode trunk
+ shutdown
+ no cdp enable
+!
+interface GigabitEthernet0/43
+ description Port-Mirror
+ shutdown
+ speed 1000
+!
+interface GigabitEthernet0/44
+ shutdown
+!
+interface GigabitEthernet0/45
+ description maude.backbone.ignum.cz:Gi2/19
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+ channel-group 2 mode active
+!
+interface GigabitEthernet0/46
+ description maude.backbone.ignum.cz:Gi2/20
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+ channel-group 2 mode active
+!
+interface GigabitEthernet0/47
+ description ned.backbone.ignum.cz:Gi2/19
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+ channel-group 1 mode active
+!
+interface GigabitEthernet0/48
+ description ned.backbone.ignum.cz:Gi2/20
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+ channel-group 1 mode active
+!
+interface GigabitEthernet0/49
+ description bb.switch.ignum.cz:Gi1/0/25
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+!
+interface GigabitEthernet0/50
+ shutdown
+!
+interface GigabitEthernet0/51
+ shutdown
+!
+interface GigabitEthernet0/52
+ description CRa Uplink
+ no switchport
+ ip address 10.0.0.6 255.255.255.252
+ spanning-tree portfast
+ spanning-tree bpdufilter enable
+!
+interface Vlan1
+ no ip address
+ shutdown
+!
+interface Vlan9
+ description GTS service
+ ip address 62.109.135.253 255.255.255.0
+ ipv6 address 2001:1AB0:7E1E:5::/64 eui-64
+ ipv6 nd ra suppress
+!
+interface Vlan702
+ description CRa-NAS-Local-Access
+ ip address 10.255.29.49 255.255.255.248
+!
+ip classless
+ip route 0.0.0.0 0.0.0.0 62.109.135.1
+ip route 10.255.29.32 255.255.255.240 10.0.0.5
+no ip http server
+no ip http secure-server
+!
+!
+ip access-list standard acl-snmp
+ permit 62.109.128.20
+ permit 217.31.48.13
+ deny   any
+!
+ip access-list extended acl-ssh
+ permit tcp host 217.31.48.13 any eq 22
+ permit tcp host 217.31.49.5 any eq 22
+ permit tcp host 217.31.48.14 any eq 22
+ permit tcp host 217.31.48.30 any eq 22
+ permit tcp host 62.109.128.20 any eq 22
+ permit tcp 62.109.143.0 0.0.0.255 any eq 22
+ deny   tcp any any
+!
+ip sla enable reaction-alerts
+logging facility local1
+logging source-interface Vlan9
+logging 217.31.48.13
+ipv6 route ::/0 2001:1AB0:7E1E:5::1
+!
+!
+snmp-server community ignum RO acl-snmp
+snmp-server location GTS-007
+snmp-server contact tech@ignum.cz
+snmp-server chassis-id burns.backbone.ignum.cz
+snmp-server enable traps tty
+snmp-server enable traps cpu threshold
+snmp-server enable traps flash insertion removal
+snmp-server enable traps bgp
+snmp-server enable traps config
+snmp-server enable traps bridge newroot topologychange
+snmp-server host 217.31.48.13 ignum 
+snmp-server host 62.109.128.20 ignum 
+!
+!
+line con 0
+ session-timeout 1440 
+ exec-timeout 0 0
+ logging synchronous
+line vty 0 4
+ session-timeout 1440 
+ access-class acl-ssh in
+ exec-timeout 0 0
+ logging synchronous
+ transport input ssh
+line vty 5 15
+ session-timeout 1440 
+ access-class acl-ssh in
+ exec-timeout 0 0
+ logging synchronous
+ transport input ssh
+!
+!
+monitor session 1 source interface Gi0/19
+monitor session 1 destination interface Gi0/43
+ntp clock-period 36028591
+ntp server 217.31.48.13
+end
