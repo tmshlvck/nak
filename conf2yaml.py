@@ -269,6 +269,18 @@ class CiscoConf(BasicConf):
 
     return vlans
 
+  @classmethod
+  def parse_users(cls, cp):
+    users = OrderedDict()
+    
+    for o in cp.find_objects(r"^\s*username\s+.+"):
+      u = o.re_match_typed(r"^\s*username\s+(.+)$").strip()
+      m = re.match(r'^\s*(\S+)\s+(.*)$', u)
+      username = m.group(1)
+      users[username] = OrderedDict()
+      users[username]['conf'] = m.group(2)
+ 
+    return users
 
   @classmethod
   def get_shortname(cls, name):
@@ -284,6 +296,7 @@ class CiscoConf(BasicConf):
     vlans = self.parse_vlans(cp)
     self.cfg[shorthostname]['vlans'] = vlans
     self.cfg[shorthostname]['ports'] = self.parse_ifaces(cp, vlans)
+    self.cfg[shorthostname]['users'] = self.parse_users(cp)
 
 ##################################################################################
 
@@ -859,7 +872,7 @@ class OS10Conf(BasicConf):
 
 
 @click.command()
-@click.option('-t', '--type', 't', help="cisco|procurve|os10|")
+@click.option('-t', '--type', 't', help="cisco|procurve|os10|brocade")
 @click.option('-d', '--debug', 'debugparam')
 @click.argument('files', nargs=-1)
 def main(t, debugparam, files):
