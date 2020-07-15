@@ -1,0 +1,214 @@
+#!/usr/bin/env python3
+
+import napalm
+import click
+import jinja2
+import yaml
+import nak.confparse
+
+
+class Box(object):
+  IGNORE_VLANS = [1,]
+
+  def __init__(self):
+    pass
+
+
+  def connect(self, host, user, passwd, enab=None):
+    self.driver = napalm.get_network_driver(t)
+    if enab:
+      self.conn = driver(host, username=user, password=passw, optional_args={"global_delay_factor": 3, 'secret': enab})
+    else:
+      self.conn = driver(host, username=user, password=passwd, optional_args={"global_delay_factor": 3})
+    conn.open()
+
+
+  def _apply_text(self, conf, simulate=False):
+    self.conn.load_merge_candidate(config=conf)
+    res = self.conn.compare_config()
+    if simulate:
+      conn.discard_config()
+    else:
+      conn.commit_config()
+
+    return res
+
+
+  def _cleanup_config(self, config):
+    return config
+
+
+  @classmethod
+  def read_ymls(cls, fhs):
+    def merge_conf(res, frag, hostname=None):
+      for swname in frag:
+        if swname == 'all' or not hostname or swname == hostname:
+          for k in frag[swname]:
+            res[k] = frag[swname][k]
+
+    config = {}
+    for fh in fhs:
+      c = yaml.safe_load(fh)
+      merge_conf(config, c)
+
+    return config
+
+
+  @classmethod
+  def _gen_text_conf(cls, conf):
+    def merge_vlans(a,b):
+      res = []
+      if type(a) is list:
+        res += a
+      else:
+        res.append(a)
+      if type(b) is list:
+        res += b
+      else:
+        res.append(b)
+      return sorted(res)
+
+    jenv = jinja2.Environment(loader=jinja2.FileSystemLoader('templates'), autoescape=False)
+    jenv.globals.update(merge_vlans=merge_vlans)
+    t = jenv.get_template(cls.TEMPLATE)
+    return t.render(config=conf)
+
+
+  def close(self):
+    self.conn.close()
+
+
+  def update_config(self, ymls, sim=False):
+    conf = conn._read_yamls(ymls)
+    self._cleanup_config(conf)
+    tc = self._gen_text_conf(conf)
+    diff = self._apply_text(tc, sim)
+    if sim:
+      print("=== Generated config ===")
+      print(tc)
+      print("=== DIFF ===")
+      print(diff)
+
+
+class IOSBox(Box):
+  IGNORE_VLANS = [1,1002, 1003, 1004, 1005]
+  TEMPLATE = 'ios.j2'
+
+  def __init__(self):
+    pass
+
+
+  def _get_configured_ifaces(self):
+    confports = set()
+    for v in self.conn.get_vlans():
+      if int(v) in IGNORE_VLANS:
+        continue
+      confports |= set(vlans[v]['interfaces'])
+    return confports
+ 
+
+  def _cleanup_config(self, config):
+    vlans = self.conn.get_vlans()
+    configured_ports = self._get_configured_ifaces()
+
+    config['remove_vlans'] = []
+    for v in [int(k) for k in vlans]:
+      if not v in config['vlans'] and not v in cls.IGNORE_VLANS:
+        config['remove_vlans'].append(v)
+
+    config['clean_ports'] = []
+    for p in config['ports']:
+      if not config['ports'][p].get('descr') and config['ports'][p].get('shutdown') and \
+        p in configured_ports:
+        config['clean_ports'].append(p)
+
+    for p in config['clean_ports']:
+      del(config['ports'][p])
+
+    return config
+
+
+
+
+class NXOSBox(IOSBox):
+  TEMPLATE = 'nxos.j2'
+
+  def __init__(self):
+    pass
+
+
+class OS10Box(Box):
+  IGNORE_VLANS = [1,]
+  TEMPLATE = 'dellos10.j2'
+
+  def __init__(self):
+    pass
+
+
+  def _cleanup_config(self, config):
+    liveconf = nak.configparse.OS10Conf()
+    liveconf.parse_file(self.conn.get_conf().splitlines())
+
+    config['remove_vlans'] = []
+    for v in [int(k) for k in liveconf.get_conf()['vlans']]:
+      if not v in config['vlans'] and not v in cls.IGNORE_VLANS:
+        config['remove_vlans'].append(v)
+
+    config['clean_ports'] = []
+    for p in config['ports']:
+      if not config['ports'][p].get('descr') and config['ports'][p].get('shutdown') and \
+        not config['ports'][p].get('tagged') and config['ports'][p]['untagged'] != 1 and \
+        liveconf.is_iface_configured(p):
+        config['clean_ports'].append(p)
+
+    for p in config['clean_ports']:
+      del(config['ports'][p])
+
+    return config
+
+
+def get_box_object(boxtype):
+  t = boxtype.strip().lower()
+  if t == 'ios':
+    return IOSBox
+  elif t == 'nxos':
+    return NXOSBox
+  elif t == 'dellos10':
+    return OS10Conf
+  else:
+    raise ValueError("Unknown box type: %s" % boxtype)
+
+
+
+@click.command()
+@click.option('-t', '--type', 't', help="ios|nxos|dellos10")
+@click.option('-h', '--host', 'h', help="hostname or IP")
+@click.option('-u', '--user', 'u', help="user")
+@click.option('-p', '--passwd', 'p', help="password/secret")
+@click.option('-e', '--enable', 'e', help="enable secret")
+@click.option('-d', '--download', 'd', help="download config and print contents", is_flag=True)
+@click.option('-a', '--apply', 'a', help="apply YAML files", is_flag=True)
+@click.option('-s', '--simulate', 's', help="simulate", is_flag=True)
+@click.argument('files', type=click.File('r'), nargs=-1)
+def main(t, h, u, p, e, d, a, s, ymls):
+  """
+  Interact with the box. Download config or take YML file, translate it to <type> config
+  and print or apply it to a box.
+  """
+
+  boxo = get_box_object(t)
+  b = boxo()
+  b.connect(h, u, p, e)
+
+  if d:
+    print(b.conn.get_config())
+  elif a:
+    b.update_config(files, s)
+  else:
+    print("No action (download|apply) specified.")
+
+  b.close()
+  
+if __name__ == '__main__':
+  main()
+
