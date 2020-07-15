@@ -137,6 +137,24 @@ class BasicConf(object):
         raise ValueError("shortname needed for config with multiple switches")
 
 
+  def is_iface_configured(self, ifname, shorthostname=None):
+    c = self.get_conf(shorthostname)
+    ifname = ifname.strip()
+    if not ifname in c['ports']:
+      return False
+
+    p = c['ports'][ifname]
+    if 'descr' in p:
+      return True
+    if 'tagged' in p:
+      return True
+    if p['untagged'] != 1:
+      return True
+    if 'shutdown' in p and p['shutdown']:
+      return False
+
+    return True
+
 class CiscoConf(BasicConf):
   def __init__(self):
     self.cfg = OrderedDict()
