@@ -15,22 +15,21 @@ class Box(object):
 
 
   def connect(self, host, user, passwd, enab=None):
-    self.driver = napalm.get_network_driver(t)
+    self.driver = napalm.get_network_driver(self.NAPALM_DRIVER)
     if enab:
-      self.conn = driver(host, username=user, password=passw, optional_args={"global_delay_factor": 3, 'secret': enab})
+      self.conn = self.driver(host, username=user, password=passw, optional_args={"global_delay_factor": 3, 'secret': enab})
     else:
-      self.conn = driver(host, username=user, password=passwd, optional_args={"global_delay_factor": 3})
-    conn.open()
+      self.conn = self.driver(host, username=user, password=passwd, optional_args={"global_delay_factor": 3})
+    self.conn.open()
 
 
   def _apply_text(self, conf, simulate=False):
     self.conn.load_merge_candidate(config=conf)
     res = self.conn.compare_config()
     if simulate:
-      conn.discard_config()
+      self.conn.discard_config()
     else:
-      conn.commit_config()
-
+      self.conn.commit_config()
     return res
 
 
@@ -39,7 +38,7 @@ class Box(object):
 
 
   @classmethod
-  def read_ymls(cls, fhs):
+  def _read_ymls(cls, fhs):
     def merge_conf(res, frag, hostname=None):
       for swname in frag:
         if swname == 'all' or not hostname or swname == hostname:
@@ -78,8 +77,12 @@ class Box(object):
     self.conn.close()
 
 
+  def get_running(self):
+    return self.conn.get_config()['running']
+
+
   def update_config(self, ymls, sim=False):
-    conf = conn._read_yamls(ymls)
+    conf = self._read_ymls(ymls)
     self._cleanup_config(conf)
     tc = self._gen_text_conf(conf)
     diff = self._apply_text(tc, sim)
@@ -93,6 +96,7 @@ class Box(object):
 class IOSBox(Box):
   IGNORE_VLANS = [1,1002, 1003, 1004, 1005]
   TEMPLATE = 'ios.j2'
+  NAPALM_DRIVER = 'ios'
 
   def __init__(self):
     pass
@@ -132,6 +136,7 @@ class IOSBox(Box):
 
 class NXOSBox(IOSBox):
   TEMPLATE = 'nxos.j2'
+  NAPALM_DRIVER = 'nxos'
 
   def __init__(self):
     pass
@@ -140,14 +145,15 @@ class NXOSBox(IOSBox):
 class OS10Box(Box):
   IGNORE_VLANS = [1,]
   TEMPLATE = 'dellos10.j2'
+  NAPALM_DRIVER = 'dellos10'
 
   def __init__(self):
     pass
 
 
   def _cleanup_config(self, config):
-    liveconf = nak.configparse.OS10Conf()
-    liveconf.parse_file(self.conn.get_conf().splitlines())
+    liveconf = nak.confparse.OS10Conf()
+    liveconf.parse_file(self.get_running().splitlines())
 
     config['remove_vlans'] = []
     for v in [int(k) for k in liveconf.get_conf()['vlans']]:
@@ -174,14 +180,14 @@ def get_box_object(boxtype):
   elif t == 'nxos':
     return NXOSBox
   elif t == 'dellos10':
-    return OS10Conf
+    return OS10Box
   else:
     raise ValueError("Unknown box type: %s" % boxtype)
 
 
 
 @click.command()
-@click.option('-t', '--type', 't', help="ios|nxos|dellos10")
+@click.option('-t', '--type', 't', help="ios|nxos|dellos10", required=True)
 @click.option('-h', '--host', 'h', help="hostname or IP")
 @click.option('-u', '--user', 'u', help="user")
 @click.option('-p', '--passwd', 'p', help="password/secret")
@@ -190,7 +196,7 @@ def get_box_object(boxtype):
 @click.option('-a', '--apply', 'a', help="apply YAML files", is_flag=True)
 @click.option('-s', '--simulate', 's', help="simulate", is_flag=True)
 @click.argument('files', type=click.File('r'), nargs=-1)
-def main(t, h, u, p, e, d, a, s, ymls):
+def main(t, h, u, p, e, d, a, s, files):
   """
   Interact with the box. Download config or take YML file, translate it to <type> config
   and print or apply it to a box.
@@ -201,7 +207,7 @@ def main(t, h, u, p, e, d, a, s, ymls):
   b.connect(h, u, p, e)
 
   if d:
-    print(b.conn.get_config())
+    print(b.get_running())
   elif a:
     b.update_config(files, s)
   else:
