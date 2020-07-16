@@ -103,10 +103,11 @@ class BasicConf(object):
     for o in cp.find_objects(r"^\s*username\s+.+"):
       u = o.re_match_typed(r"^\s*username\s+(.+)$").strip()
       m = re.match(r'^\s*(\S+)\s+(.*)$', u)
-      username = m.group(1)
-      if not username in users:
-        users[username] = []
-      users[username].append(m.group(2))
+      if m:
+        username = m.group(1)
+        if not username in users:
+          users[username] = []
+        users[username].append(m.group(2))
  
     return users
 

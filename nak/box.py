@@ -17,7 +17,7 @@ class Box(object):
   def connect(self, host, user, passwd, enab=None):
     self.driver = napalm.get_network_driver(self.NAPALM_DRIVER)
     if enab:
-      self.conn = self.driver(host, username=user, password=passw, optional_args={"global_delay_factor": 3, 'secret': enab})
+      self.conn = self.driver(host, username=user, password=passwd, optional_args={"global_delay_factor": 3, 'secret': enab})
     else:
       self.conn = self.driver(host, username=user, password=passwd, optional_args={"global_delay_factor": 3})
     self.conn.open()

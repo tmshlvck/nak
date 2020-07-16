@@ -11,7 +11,7 @@ import nak.box
 @click.option('-u', '--user', 'u', help="user")
 @click.option('-p', '--passwd', 'p', help="password/secret")
 @click.option('-e', '--enable', 'e', help="enable secret")
-@click.option('-d', '--download', 'd', help="download config and print contents", is_flag=True)
+@click.option('-d', '--download', 'd', help="download config and save it to file", type=click.File('w'))
 @click.option('-a', '--apply', 'a', help="apply YAML files", is_flag=True)
 @click.option('-s', '--simulate', 's', help="simulate", is_flag=True)
 @click.argument('files', type=click.File('r'), nargs=-1)
@@ -26,7 +26,7 @@ def main(t, h, u, p, e, d, a, s, files):
   b.connect(h, u, p, e)
 
   if d:
-    print(b.get_running())
+    d.write((b.get_running()))
   elif a:
     b.update_config(files, s)
   else:
