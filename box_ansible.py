@@ -35,7 +35,7 @@ def get_hosts(sources=None, vault_pass=None):
 
   for h in hosts:
     hv = variable_manager.get_vars(host=inventory.get_host(h))
-    yield {k:hv[k] for k in ['ansible_user', 'ansible_password', 'ansible_become_password', 'inventory_hostname', 'inventory_hostname_short', 'group_names']}
+    yield {k:(hv[k] if k in hv else None) for k in ['ansible_user', 'ansible_password', 'ansible_become_password', 'inventory_hostname', 'inventory_hostname_short', 'group_names']}
 
 
 def get_type(group_names):
@@ -60,7 +60,8 @@ def get_type(group_names):
 @click.option('-s', '--simulate', 's', help="simulate", is_flag=True)
 @click.option('-v', '--verbose', 'v', help="verbose output", is_flag=True)
 @click.option('-i', '--inventory', 'i', help="inventory file")
-def main(a, p, d, c, s, v, i):
+@click.option('-l', '--limit', 'l', help="limit actions to hostnames or shorthostnames", multiple=True)
+def main(a, p, d, c, s, v, i, l):
   """
   Interact with the boxes defined in Ansible inventory. Download config or take YML file, translate
   it to box config and print or apply it to a box.
@@ -75,6 +76,9 @@ def main(a, p, d, c, s, v, i):
     hosts = get_hosts()
 
   for hostdef in hosts:
+    if l and not (hostdef['inventory_hostname'] in l or hostdef['inventory_hostname_short'] in l):
+      dbg('Skipping %s' % hostdef['inventory_hostname'])
+      continue
     try:
       t = get_type(hostdef['group_names'])
     except:
@@ -96,13 +100,13 @@ def main(a, p, d, c, s, v, i):
       if c:
         cpo = nak.confparse.get_box_object(t)
         o = cpo()
-        o.parse_open_file(fn)
+        o.parse_file(fn)
         cfn = os.path.join(d, '%s.yml' % hostdef['inventory_hostname_short'])
         dbg("Converting running_config from: %s to file %s" % (hostdef['inventory_hostname'], cfn))
         with open(cfn, 'w') as fh:
           fh.write(o.gen_yaml())
     elif a:
-      files = p
+      files = list(p)
       files.append(os.path.join(a, '%s.yml' % hostdef['inventory_hostname_short']))
       dbg("Applying files: %s to host %s" % (str(files), hostdef['inventory_hostname']))
       b.update_config(files, s)

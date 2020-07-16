@@ -82,6 +82,10 @@ class Box(object):
 
 
   def update_config(self, ymls, sim=False):
+    return self.update_config_filehandles([open(f, 'r') for f in ymls], sim)
+
+
+  def update_config_filehandles(self, ymls, sim=False):
     conf = self._read_ymls(ymls)
     self._cleanup_config(conf)
     tc = self._gen_text_conf(conf)
