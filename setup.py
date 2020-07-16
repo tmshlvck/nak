@@ -13,10 +13,12 @@ setup(name='nak',
         'napalm-dellos10',
         'click',
         'jinja2',
+        'ansible',
         ],
     packages = ['nak', ],
     scripts = [
         'box.py',
+        'box_ansible.py',
         'conf2yaml.py'
         ],
    )
