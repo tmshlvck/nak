@@ -508,13 +508,14 @@ class BrocadeConf(BasicConf):
 
   @classmethod
   def _ifindex_range(cls, start, end):
-    ms = re.match(r'^\s*([0-9/]+/)([0-9]+)\s*$', start)
-    me = re.match(r'^\s*([0-9/]+/)([0-9]+)\s*$', end)
+    ms = re.match(r'^\s*([0-9/]+/)?([0-9]+)\s*$', start)
+    me = re.match(r'^\s*([0-9/]+/)?([0-9]+)\s*$', end)
     if ms and me and ms.group(1) == me.group(1):
       s = int(ms.group(2))
       e = int(me.group(2))
       return ['%s%d' % (ms.group(1), i) for i in range(s,e+1)]
-
+    else:
+      raise ValueError("Can not parse: start=%s end=%s" % (str(start), str(end)))
 
   @classmethod
   def _normalize_iflist(cls, rng):
