@@ -38,12 +38,10 @@ class Box(object):
 
 
   @classmethod
-  def _read_ymls(cls, fhs):
-    def merge_conf(res, frag, hostname=None):
-      for swname in frag:
-        if swname == 'all' or not hostname or swname == hostname:
-          for k in frag[swname]:
-            res[k] = frag[swname][k]
+  def _read_conf_ymls(cls, fhs):
+    def merge_conf(res, frag):
+      for k in frag:
+        res[k] = frag[k]
 
     config = {}
     for fh in fhs:
@@ -81,19 +79,26 @@ class Box(object):
     return self.conn.get_config()['running']
 
 
+  def get_running_parsed(self):
+    cpo = nak.confparse.get_box_object(self.NAPALM_DRIVER)
+    liveconf = cpo()
+    liveconf.parse_file(self.get_running().splitlines())
+    return liveconf
+
+
   def update_config(self, ymls, sim=False):
-    return self.update_config_filehandles([open(f, 'r') for f in ymls], sim)
+    return self.update_config_openfh([open(f, 'r') for f in ymls], sim)
 
 
-  def update_config_filehandles(self, ymls, sim=False):
-    conf = self._read_ymls(ymls)
+  def update_config_openfh(self, ymls, sim=False):
+    conf = self._read_conf_ymls(ymls)
     self._cleanup_config(conf)
     tc = self._gen_text_conf(conf)
     diff = self._apply_text(tc, sim)
     if sim:
-      print("=== Generated config ===")
+      print("--- Generated config ---")
       print(tc)
-      print("=== DIFF ===")
+      print("--- Napalm diff ---")
       print(diff)
 
 
@@ -133,6 +138,12 @@ class IOSBox(Box):
     for p in config['clean_ports']:
       del(config['ports'][p])
 
+    config['clean_users'] = []
+    liveconf = self.get_running_parsed().get_
+    for u in liveconf.cfg['users']:
+      if not u in config['users']:
+        config['clean_users'].append(u)
+
     return config
 
 
@@ -156,11 +167,9 @@ class OS10Box(Box):
 
 
   def _cleanup_config(self, config):
-    liveconf = nak.confparse.OS10Conf()
-    liveconf.parse_file(self.get_running().splitlines())
-
+    liveconf = self.get_running_parsed()
     config['remove_vlans'] = []
-    for v in [int(k) for k in liveconf.get_conf()['vlans']]:
+    for v in [int(k) for k in liveconf.cfg['vlans']]:
       if not v in config['vlans'] and not v in cls.IGNORE_VLANS:
         config['remove_vlans'].append(v)
 
@@ -173,6 +182,11 @@ class OS10Box(Box):
 
     for p in config['clean_ports']:
       del(config['ports'][p])
+
+    config['clean_users'] = []
+    for u in liveconf.cfg['users']:
+      if not u in config['users']:
+        config['clean_users'].append(u)
 
     return config
 

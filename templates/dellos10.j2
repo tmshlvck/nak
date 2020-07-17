@@ -10,6 +10,16 @@ interface vlan{{ v }}
 no interface Vlan{{ v }}
 {%- endfor %}
 
+{%- for u in config.users %}
+{%- for uc in config.users[u] %}
+username {{ u }} {{ uc }}
+{%- endfor %}
+{%- endfor %}
+
+{%- for u in config.clean_users %}
+no username {{ u }}
+{%- endfor %}
+
 {%- for p in config.ports %}
 interface {{ p }}
 {%- if config.ports[p].descr %}

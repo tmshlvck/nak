@@ -19,36 +19,35 @@ def d(msg):
 
 # Data Model:
 # ---
-# bb:
-#   hostname: bb.switch.ignum.cz
-#   vlans:
-#     - vlan: 1
-#       name: default
-#     - vlan: 10
-#       name: VMs
-#   ports:
-#     - port: Ethernet1/1
-#       descr: Customer Server 1 (eth0)
-#       type: trunk
-#       untagged: 1
-#       tagged: 1,10
-#       shutdown: true
-#     - port: Ethernet1/2
-#       descr: Customer Server 2 (eth0)
-#       type: access
-#       untagged: 1
-#       shutdown: false
-#     - port: Ethernet1/2
-#       descr: Customer Server 2 (eth0)
-#       type: access
-#       untagged: 1
-#       shutdown: false
-#     - port: PortChannel1
-#       descr: Customer Server 3
-#       type: trunk
-#       untagged: 1
-#       shutdown: false
-#       mlag: 1
+# hostname: bb.switch.ignum.cz
+#  vlans:
+#   - vlan: 1
+#     name: default
+#   - vlan: 10
+#     name: VMs
+#  ports:
+#   - port: Ethernet1/1
+#     descr: Customer Server 1 (eth0)
+#     type: trunk
+#     untagged: 1
+#     tagged: 1,10
+#     shutdown: true
+#   - port: Ethernet1/2
+#     descr: Customer Server 2 (eth0)
+#     type: access
+#     untagged: 1
+#     shutdown: false
+#   - port: Ethernet1/2
+#     descr: Customer Server 2 (eth0)
+#     type: access
+#     untagged: 1
+#     shutdown: false
+#   - port: PortChannel1
+#     descr: Customer Server 3
+#     type: trunk
+#     untagged: 1
+#     shutdown: false
+#     mlag: 1
 
 
 
@@ -57,7 +56,7 @@ class BasicConf(object):
   def __init__(self, config):
     """ config - list of config lines or str with filename
     """
-
+    self.cfg = OrderedDict() # to be done the same in the descendants
     raise ValueError("Can not create instance of base class.")
 
 
@@ -119,7 +118,7 @@ class BasicConf(object):
     raise Exception("Not implemented in abstract class")
 
 
-  def parse_open_file(self, fh):
+  def parse_file_openfh(self, fh):
     return self.parse_file(list(fh.readlines()))
 
 
@@ -128,23 +127,12 @@ class BasicConf(object):
     return yaml.dump(self.cfg, sort_keys=False, explicit_start=True)
 
 
-  def get_conf(self, shorthostname=None):
-    if shorthostname:
-      return self.cfg[shorthostname]
-    else:
-      if len(self.cfg) == 1:
-        return self.cfg[list(self.cfg.keys())[0]]
-      else:
-        raise ValueError("shortname needed for config with multiple switches")
-
-
-  def is_iface_configured(self, ifname, shorthostname=None):
-    c = self.get_conf(shorthostname)
+  def is_iface_configured(self, ifname):
     ifname = ifname.strip()
-    if not ifname in c['ports']:
+    if not ifname in self.cfg['ports']:
       return False
 
-    p = c['ports'][ifname]
+    p = self.cfg['ports'][ifname]
     if 'descr' in p:
       return True
     if 'tagged' in p:
@@ -314,13 +302,11 @@ class CiscoConf(BasicConf):
     cp = ciscoconfparse.CiscoConfParse(conffile)
     o = list(cp.find_objects(r"^\s*hostname\s+(.+)$"))[0]
     hostname = o.re_match_typed(r"^\s*hostname\s+(.+)$").strip()
-    shorthostname = self.get_shortname(hostname)
-    self.cfg[shorthostname] = OrderedDict()
-    self.cfg[shorthostname]['hostname'] = hostname
+    self.cfg['hostname'] = hostname
     vlans = self._parse_vlans(cp)
-    self.cfg[shorthostname]['vlans'] = vlans
-    self.cfg[shorthostname]['ports'] = self._parse_ifaces(cp, vlans)
-    self.cfg[shorthostname]['users'] = self._parse_users(cp)
+    self.cfg['vlans'] = vlans
+    self.cfg['ports'] = self._parse_ifaces(cp, vlans)
+    self.cfg['users'] = self._parse_users(cp)
 
 ##################################################################################
 
@@ -480,13 +466,11 @@ class ProCurveConf(BasicConf):
     cp = ciscoconfparse.CiscoConfParse(conffile)
     o = list(cp.find_objects(r"^\s*hostname\s+(.+)$"))[0]
     hostname = o.re_match_typed(r"^\s*hostname\s+(.+)$").strip()
-    shorthostname = self.get_shortname(hostname)
-    self.cfg[shorthostname] = OrderedDict()
-    self.cfg[shorthostname]['hostname'] = hostname
+    self.cfg['hostname'] = hostname
     ports = self._parse_ifaces(cp)
-    self.cfg[shorthostname]['ports'] = ports
-    self.cfg[shorthostname]['vlans'] = self._parse_vlans(cp, ports)
-    self.cfg[shorthostname]['users'] = self._parse_users(cp)
+    self.cfg['ports'] = ports
+    self.cfg['vlans'] = self._parse_vlans(cp, ports)
+    self.cfg['users'] = self._parse_users(cp)
 
 
 ##################################################################################
@@ -732,14 +716,12 @@ lag "ti-ds1" dynamic id 2
     cp = ciscoconfparse.CiscoConfParse(conffile)
     o = list(cp.find_objects(r"^\s*hostname\s+(.+)$"))[0]
     hostname = o.re_match_typed(r"^\s*hostname\s+(.+)$").strip()
-    shorthostname = self.get_shortname(hostname)
-    self.cfg[shorthostname] = OrderedDict()
-    self.cfg[shorthostname]['hostname'] = hostname
+    self.cfg['hostname'] = hostname
     ports = self._parse_ifaces(cp)
-    self.cfg[shorthostname]['vlans'] = self._parse_vlans(cp, ports)
+    self.cfg['vlans'] = self._parse_vlans(cp, ports)
     self._parse_trunks(cp, ports)
-    self.cfg[shorthostname]['ports'] = self._cleanup_ifaces(ports)
-    self.cfg[shorthostname]['users'] = self._parse_users(cp)
+    self.cfg['ports'] = self._cleanup_ifaces(ports)
+    self.cfg['users'] = self._parse_users(cp)
 
 #################
 
@@ -886,13 +868,11 @@ class OS10Conf(BasicConf):
     cp = ciscoconfparse.CiscoConfParse(conffile)
     o = list(cp.find_objects(r"^\s*hostname\s+(.+)$"))[0]
     hostname = o.re_match_typed(r"^\s*hostname\s+(.+)$").strip()
-    shorthostname = self.get_shortname(hostname)
-    self.cfg[shorthostname] = OrderedDict()
-    self.cfg[shorthostname]['hostname'] = hostname
+    self.cfg['hostname'] = hostname
     vlans = self._parse_vlans(cp)
-    self.cfg[shorthostname]['vlans'] = vlans
-    self.cfg[shorthostname]['ports'] = self._parse_ifaces(cp, vlans)
-    self.cfg[shorthostname]['users'] = self._parse_users(cp)
+    self.cfg['vlans'] = vlans
+    self.cfg['ports'] = self._parse_ifaces(cp, vlans)
+    self.cfg['users'] = self._parse_users(cp)
 
 
 def get_box_object(boxtype):
