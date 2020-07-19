@@ -865,6 +865,7 @@ class OS10Conf(BasicConf):
 
 
   def parse_file(self, conffile):
+    print("DEBUG: %s" % str(conffile))
     cp = ciscoconfparse.CiscoConfParse(conffile)
     o = list(cp.find_objects(r"^\s*hostname\s+(.+)$"))[0]
     hostname = o.re_match_typed(r"^\s*hostname\s+(.+)$").strip()

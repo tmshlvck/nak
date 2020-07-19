@@ -113,8 +113,9 @@ class IOSBox(Box):
 
   def _get_configured_ifaces(self):
     confports = set()
-    for v in self.conn.get_vlans():
-      if int(v) in IGNORE_VLANS:
+    vlans = self.conn.get_vlans()
+    for v in vlans:
+      if int(v) in self.IGNORE_VLANS:
         continue
       confports |= set(vlans[v]['interfaces'])
     return confports
@@ -126,7 +127,7 @@ class IOSBox(Box):
 
     config['remove_vlans'] = []
     for v in [int(k) for k in vlans]:
-      if not v in config['vlans'] and not v in cls.IGNORE_VLANS:
+      if not v in config['vlans'] and not v in self.IGNORE_VLANS:
         config['remove_vlans'].append(v)
 
     config['clean_ports'] = []
@@ -139,7 +140,7 @@ class IOSBox(Box):
       del(config['ports'][p])
 
     config['clean_users'] = []
-    liveconf = self.get_running_parsed().get_
+    liveconf = self.get_running_parsed()
     for u in liveconf.cfg['users']:
       if not u in config['users']:
         config['clean_users'].append(u)
@@ -170,7 +171,7 @@ class OS10Box(Box):
     liveconf = self.get_running_parsed()
     config['remove_vlans'] = []
     for v in [int(k) for k in liveconf.cfg['vlans']]:
-      if not v in config['vlans'] and not v in cls.IGNORE_VLANS:
+      if not v in config['vlans'] and not v in self.IGNORE_VLANS:
         config['remove_vlans'].append(v)
 
     config['clean_ports'] = []

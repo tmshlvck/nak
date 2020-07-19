@@ -28,7 +28,7 @@ def main(t, h, u, p, e, d, a, s, files):
   if d:
     d.write((b.get_running()))
   elif a:
-    b.update_config_filehandles(files, s)
+    b.update_config_openfh(files, s)
   else:
     print("No action (download|apply) specified.")
 
