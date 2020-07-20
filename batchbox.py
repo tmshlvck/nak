@@ -26,7 +26,7 @@ def get_boxconn(hostdef):
     t = nak.batch.AnsibleInventory.get_type(hostdef['group_names'])
   except:
     dbg('Ignoring host of unknown type %s' % hostdef['inventory_hostname'])
-    return None
+    return (None,None)
 
   dbg('Connecting to a host %s of type %s...' % (hostdef['inventory_hostname'], t))
   boxo = nak.box.get_box_object(t)
