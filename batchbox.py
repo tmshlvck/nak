@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+import warnings
+warnings.simplefilter("ignore")
+
 import json
 from ansible.parsing.dataloader import DataLoader
 from ansible.vars.manager import VariableManager

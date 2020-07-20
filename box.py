@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
+import warnings
+warnings.simplefilter("ignore")
+
 import click
 import nak.box
-
-
 
 @click.command()
 @click.option('-t', '--type', 't', help="ios|nxos|dellos10", required=True)

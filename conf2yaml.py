@@ -8,7 +8,7 @@ import nak.confparse
 
 
 @click.command()
-@click.option('-t', '--type', 't', help="cisco|procurve|os10|brocade")
+@click.option('-t', '--type', 't', help="cisco|procurve|os10|brocade", required=True)
 @click.option('-d', '--debug', 'debugparam')
 @click.argument('files', nargs=-1, type=click.File('r'))
 def main(t, debugparam, files):
