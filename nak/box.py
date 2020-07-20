@@ -23,54 +23,6 @@ class Box(object):
     self.conn.open()
 
 
-  def _apply_text(self, conf, simulate=False):
-    self.conn.load_merge_candidate(config=conf)
-    res = self.conn.compare_config()
-    if simulate:
-      self.conn.discard_config()
-    else:
-      self.conn.commit_config()
-    return res
-
-
-  def _cleanup_config(self, config):
-    return config
-
-
-  @classmethod
-  def _read_conf_ymls(cls, fhs):
-    def merge_conf(res, frag):
-      for k in frag:
-        res[k] = frag[k]
-
-    config = {}
-    for fh in fhs:
-      c = yaml.safe_load(fh)
-      merge_conf(config, c)
-
-    return config
-
-
-  @classmethod
-  def _gen_text_conf(cls, conf):
-    def merge_vlans(a,b):
-      res = []
-      if type(a) is list:
-        res += a
-      else:
-        res.append(a)
-      if type(b) is list:
-        res += b
-      else:
-        res.append(b)
-      return sorted(res)
-
-    jenv = jinja2.Environment(loader=jinja2.FileSystemLoader('templates'), autoescape=False)
-    jenv.globals.update(merge_vlans=merge_vlans)
-    t = jenv.get_template(cls.TEMPLATE)
-    return t.render(config=conf)
-
-
   def close(self):
     self.conn.close()
 
@@ -86,20 +38,45 @@ class Box(object):
     return liveconf
 
 
-  def update_config(self, ymls, sim=False):
-    return self.update_config_openfh([open(f, 'r') for f in ymls], sim)
+  # New config generate & apply
 
 
-  def update_config_openfh(self, ymls, sim=False):
-    conf = self._read_conf_ymls(ymls)
-    self._cleanup_config(conf)
-    tc = self._gen_text_conf(conf)
-    diff = self._apply_text(tc, sim)
-    if sim:
-      print("--- Generated config ---")
-      print(tc)
-      print("--- Napalm diff ---")
-      print(diff)
+  @classmethod
+  def _gen_text_conf(cls, conf):
+    jenv = jinja2.Environment(loader=jinja2.FileSystemLoader('templates'), autoescape=False)
+    t = jenv.get_template(cls.TEMPLATE)
+    return t.render(config=conf)
+
+
+  def _process_config(self, config):
+    return config # abstract to be extended by each flavor
+
+
+  def _apply_text(self, conf, simulate=False):
+    self.conn.load_merge_candidate(config=conf)
+    res = self.conn.compare_config()
+    if simulate:
+      self.conn.discard_config()
+    else:
+      self.conn.commit_config()
+    return res
+
+
+  def update_config(self, files, sim=False):
+    def merge_conf(res, frag):
+      for k in frag:
+        res[k] = frag[k]
+
+    config = {}
+    for yf in files:
+        with open(yf, 'r') as fh:
+          c = yaml.safe_load(fh)
+        merge_conf(config, c)
+
+    config = self._process_config(config)
+    textconf = self._gen_text_conf(config)
+    diff = self._apply_text(textconf, sim)
+    return (textconf, diff) # (textconf, diff) 
 
 
 class IOSBox(Box):
@@ -121,7 +98,7 @@ class IOSBox(Box):
     return confports
  
 
-  def _cleanup_config(self, config):
+  def _process_config(self, config):
     vlans = self.conn.get_vlans()
     configured_ports = self._get_configured_ifaces()
 
@@ -148,6 +125,26 @@ class IOSBox(Box):
     return config
 
 
+  @classmethod
+  def _gen_text_conf(cls, conf):
+    def merge_vlans(a,b):
+      res = []
+      if type(a) is list:
+        res += a
+      else:
+        res.append(a)
+      if type(b) is list:
+        res += b
+      else:
+        res.append(b)
+      return sorted(res)
+
+    jenv = jinja2.Environment(loader=jinja2.FileSystemLoader('templates'), autoescape=False)
+    jenv.globals.update(merge_vlans=merge_vlans)
+    t = jenv.get_template(cls.TEMPLATE)
+    return t.render(config=conf)
+
+
 
 
 class NXOSBox(IOSBox):
@@ -167,7 +164,7 @@ class OS10Box(Box):
     pass
 
 
-  def _cleanup_config(self, config):
+  def _process_config(self, config):
     liveconf = self.get_running_parsed()
     config['remove_vlans'] = []
     for v in [int(k) for k in liveconf.cfg['vlans']]:

@@ -1,0 +1,9 @@
+---
+inventories:
+- ansible/hosts
+vault_pass:
+text_config_dir: configs/
+yaml_config_dir: yamlcfgs/
+prepend_apply_yamls:
+- yamlcfgs/vlans.yml
+

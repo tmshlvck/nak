@@ -18,7 +18,7 @@ setup(name='nak',
     packages = ['nak', ],
     scripts = [
         'box.py',
-        'box_ansible.py',
+        'batchbox.py',
         'conf2yaml.py'
         ],
    )

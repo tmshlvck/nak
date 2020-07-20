@@ -17,7 +17,7 @@ def main(t, debugparam, files):
   cpo = nak.confparse.get_box_object(t)
   for f in files:
     o = cpo()
-    o.parse_open_file(f)
+    o.parse_file(f.readlines())
     print(o.gen_yaml())
  
 

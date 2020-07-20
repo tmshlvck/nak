@@ -118,10 +118,6 @@ class BasicConf(object):
     raise Exception("Not implemented in abstract class")
 
 
-  def parse_file_openfh(self, fh):
-    return self.parse_file(list(fh.readlines()))
-
-
   def gen_yaml(self):
     yaml.add_representer(OrderedDict, lambda self, data: yaml.representer.SafeRepresenter.represent_dict(self, data.items()))
     return yaml.dump(self.cfg, sort_keys=False, explicit_start=True)
@@ -865,7 +861,6 @@ class OS10Conf(BasicConf):
 
 
   def parse_file(self, conffile):
-    print("DEBUG: %s" % str(conffile))
     cp = ciscoconfparse.CiscoConfParse(conffile)
     o = list(cp.find_objects(r"^\s*hostname\s+(.+)$"))[0]
     hostname = o.re_match_typed(r"^\s*hostname\s+(.+)$").strip()
