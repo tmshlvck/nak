@@ -33,10 +33,10 @@ def get_boxconn(hostdef):
   b = boxo()
   b.connect(hostdef['inventory_hostname'], hostdef['ansible_user'], hostdef['ansible_password'], hostdef['ansible_become_password'])
   dbg('Connection established to %s' % (hostdef['inventory_hostname'],))
-  return b
+  return (b,t) # boxobject, type
 
 def apply_yamls(hostdef, cfg, sim):
-  boxc = get_boxconn(hostdef)
+  boxc, boxt = get_boxconn(hostdef)
   if not boxc:
     return
 
@@ -50,7 +50,7 @@ def apply_yamls(hostdef, cfg, sim):
   boxc.close()
 
 def backup(hostdef, cfg, conv):
-  boxc = get_boxconn(hostdef)
+  boxc, boxt = get_boxconn(hostdef)
   if not boxc:
     return
 
@@ -61,7 +61,7 @@ def backup(hostdef, cfg, conv):
     fh.write(cont)
     dbg("Downloaded %d bytes" % len(cont))
   if conv:
-    cpo = nak.confparse.get_box_object(t)
+    cpo = nak.confparse.get_box_object(boxt)
     o = cpo()
     o.parse_file(fn)
     cfn = os.path.join(cfg.cfg['yaml_config_dir'], '%s.yml' % hostdef['inventory_hostname_short'])
