@@ -28,8 +28,7 @@ def main(t, h, u, p, e, d, a, s):
     with open(d, 'w') as fh:
       fh.write((b.get_running()))
   elif a:
-    files = 
-    b.update_config(files, s)
+    b.update_config(a, s)
   else:
     print("No action (download|apply) specified.")
 
