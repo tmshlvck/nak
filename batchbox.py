@@ -86,6 +86,8 @@ def main(a, b, c, s, v, l, conf):
   global debug
   if v:
     debug = True
+    nak.confparse.debug = v
+    
 
   cfg = nak.batch.BatchConfig(conf)
 
