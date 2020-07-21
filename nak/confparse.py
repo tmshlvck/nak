@@ -618,9 +618,9 @@ vlan 16 name TI-Management by port
         vid = int(m.group(1))
         if not vid in vlans:
           vlans[vid] = OrderedDict()
-        n = m.group(3).strip()
+        n = m.group(3)
         if n:
-           vlans[vid]['name'] = m.group(3).strip()
+           vlans[vid]['name'] = n.strip()
       else:
         raise ValueError(str(o))
 
