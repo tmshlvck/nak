@@ -43,10 +43,10 @@ def apply_yamls(hostdef, cfg, sim):
   files = list(cfg.cfg['prepend_apply_yamls'])
   files.append(os.path.join(cfg.cfg['yaml_config_dir'], '%s.yml' % hostdef['inventory_hostname_short']))
   dbg("Applying files: %s to host %s" % (str(files), hostdef['inventory_hostname']))
-  textcfg, diff = boxc.update_config(files, sim)
+  textcfg, diff = boxc.update_config(files, sim, cfg.cfg['templates'])
   if sim:
     dbg("Generated config:\n%s" % textcfg)
-    print("Diff:\n%s" % diff)
+  dbg("Applied diff:\n%s" % diff)
   boxc.close()
 
 def backup(hostdef, cfg, conv):

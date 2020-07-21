@@ -6,6 +6,7 @@ import jinja2
 import yaml
 import nak.confparse
 
+global_delay_factor=0.5
 
 class Box(object):
   IGNORE_VLANS = [1,]
@@ -17,9 +18,9 @@ class Box(object):
   def connect(self, host, user, passwd, enab=None):
     self.driver = napalm.get_network_driver(self.NAPALM_DRIVER)
     if enab:
-      self.conn = self.driver(host, username=user, password=passwd, optional_args={"global_delay_factor": 3, 'secret': enab})
+      self.conn = self.driver(host, username=user, password=passwd, optional_args={"global_delay_factor": global_delay_factor, 'secret': enab})
     else:
-      self.conn = self.driver(host, username=user, password=passwd, optional_args={"global_delay_factor": 3})
+      self.conn = self.driver(host, username=user, password=passwd, optional_args={"global_delay_factor": global_delay_factor})
     self.conn.open()
 
 
@@ -42,14 +43,28 @@ class Box(object):
 
 
   @classmethod
-  def _gen_text_conf(cls, conf):
-    jenv = jinja2.Environment(loader=jinja2.FileSystemLoader('templates'), autoescape=False)
+  def _gen_text_conf(cls, conf, template_dir='templates'):
+    jenv = jinja2.Environment(loader=jinja2.FileSystemLoader(template_dir), autoescape=False)
     t = jenv.get_template(cls.TEMPLATE)
     return t.render(config=conf)
 
 
+  def _process_port(self, portname, config):
+    pd = config['ports'][portname]
+    if 'tagged' in pd:
+      if type(pd['tagged']) is str:
+        if pd['tagged'].lower() == 'all' or pd['tagged'] == '*':
+          pd['tagged'] = sorted(list(set(config['vlans'].keys()) - {pd['untagged']}))
+        else:
+          raise ValueError('Unsupported tagged value:' % pd['tagged'])
+    return pd
+
+
   def _process_config(self, config):
-    return config # abstract to be extended by each flavor
+    # abstract to be extended by each flavor
+    for p in config['ports']:
+      config['ports'][p] = self._process_port(p, config)
+    return config
 
 
   def _apply_text(self, conf, simulate=False):
@@ -62,7 +77,7 @@ class Box(object):
     return res
 
 
-  def update_config(self, files, sim=False):
+  def update_config(self, files, sim=False, template_dir='templates'):
     def merge_conf(res, frag):
       for k in frag:
         res[k] = frag[k]
@@ -74,7 +89,7 @@ class Box(object):
         merge_conf(config, c)
 
     config = self._process_config(config)
-    textconf = self._gen_text_conf(config)
+    textconf = self._gen_text_conf(config, template_dir)
     diff = self._apply_text(textconf, sim)
     return (textconf, diff) # (textconf, diff) 
 
@@ -99,6 +114,7 @@ class IOSBox(Box):
  
 
   def _process_config(self, config):
+    super()._process_config(config)
     vlans = self.conn.get_vlans()
     configured_ports = self._get_configured_ifaces()
 
@@ -126,7 +142,7 @@ class IOSBox(Box):
 
 
   @classmethod
-  def _gen_text_conf(cls, conf):
+  def _gen_text_conf(cls, conf, template_dir='templates'):
     def merge_vlans(a,b):
       res = []
       if type(a) is list:
@@ -139,7 +155,7 @@ class IOSBox(Box):
         res.append(b)
       return sorted(res)
 
-    jenv = jinja2.Environment(loader=jinja2.FileSystemLoader('templates'), autoescape=False)
+    jenv = jinja2.Environment(loader=jinja2.FileSystemLoader(template_dir), autoescape=False)
     jenv.globals.update(merge_vlans=merge_vlans)
     t = jenv.get_template(cls.TEMPLATE)
     return t.render(config=conf)
@@ -165,6 +181,8 @@ class OS10Box(Box):
 
 
   def _process_config(self, config):
+    super()._process_config(config)
+
     liveconf = self.get_running_parsed()
     config['remove_vlans'] = []
     for v in [int(k) for k in liveconf.cfg['vlans']]:

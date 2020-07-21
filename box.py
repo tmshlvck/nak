@@ -6,6 +6,8 @@ warnings.simplefilter("ignore")
 import click
 import nak.box
 
+def_templates = '/opt/nak/templates'
+
 @click.command()
 @click.option('-t', '--type', 't', help="ios|nxos|dellos10", required=True)
 @click.option('-h', '--host', 'h', help="hostname or IP")
@@ -15,6 +17,7 @@ import nak.box
 @click.option('-d', '--download', 'd', help="download config and save it to file", type=click.Path(exists=False))
 @click.option('-a', '--apply', 'a', help="apply YAML files", type=click.Path(exists=True), multiple=True)
 @click.option('-s', '--simulate', 's', help="simulate", is_flag=True)
+@click.option('-m', '--templatedir', 'td', help="j2 template directory (default: %s)" % def_templates, default=def_tempaltes)
 def main(t, h, u, p, e, d, a, s):
   """
   Interact with the box. Download config or take YML file, translate it to <type> config
@@ -29,7 +32,10 @@ def main(t, h, u, p, e, d, a, s):
     with open(d, 'w') as fh:
       fh.write((b.get_running()))
   elif a:
-    b.update_config(a, s)
+    tc, diff = b.update_config(a, s, td)
+    if s:
+      print("Generated config:\n%s" % tc)
+    print("Diff:\n%s" % diff)
   else:
     print("No action (download|apply) specified.")
 
