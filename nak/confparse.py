@@ -492,9 +492,16 @@ class BrocadeConf(BasicConf):
     ms = re.match(r'^\s*([0-9/]+/)?([0-9]+)\s*$', start)
     me = re.match(r'^\s*([0-9/]+/)?([0-9]+)\s*$', end)
     if ms and me and ms.group(1) == me.group(1):
-      s = int(ms.group(2))
-      e = int(me.group(2))
-      return ['%s%d' % (ms.group(1), i) for i in range(s,e+1)]
+      mspfx = ms.group(1)
+      mepfx = me.group(1)
+      if mspfx == mepfx:
+        s = int(ms.group(2))
+        e = int(me.group(2))
+        if not mspfx:
+          mspfx = mepfx = ''
+      else:
+        raise ValueError("Can not expand multi-level range: start=%s end=%s" % (str(start), str(end)))
+      return ['%s%d' % (mspfx, i) for i in range(s,e+1)]
     else:
       raise ValueError("Can not parse: start=%s end=%s" % (str(start), str(end)))
 
