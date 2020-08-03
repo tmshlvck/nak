@@ -20,7 +20,8 @@ setup(name='nak',
     scripts = [
         'box.py',
         'batchbox.py',
-        'conf2yaml.py'
+        'conf2yaml.py',
+        'genoxidized.py'
         ],
    )
 
