@@ -6,6 +6,7 @@ setup(name='nak',
     version='1.0',
     description='Network Administration Kit',
     install_requires = [
+        'wheel',
         'netmiko',
         'ciscoconfparse',
         'napalm',
