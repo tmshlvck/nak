@@ -50,6 +50,15 @@ class AnsibleInventory(object):
     if 'dellos10' in group_names:
       return 'dellos10'
 
+    if 'procurve' in group_names:
+      return 'procurve'
+
+    if 'ironware' in group_names:
+      return 'ironware'
+
+    if 'junos' in group_names:
+      return 'junos'
+
     raise Exception('Can not derive type from: %s' % str(group_names))
 
 
