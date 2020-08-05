@@ -20,29 +20,29 @@ def d(msg):
 # Data Model:
 # ---
 # hostname: bb.switch.ignum.cz
-#  vlans:
-#   - vlan: 1
+# vlans:
+#   1:
 #     name: default
-#   - vlan: 10
+#   10:
 #     name: VMs
-#  ports:
-#   - port: Ethernet1/1
+# ports:
+#   Ethernet1/1:
 #     descr: Customer Server 1 (eth0)
 #     type: trunk
 #     untagged: 1
 #     tagged: 1,10
 #     shutdown: true
-#   - port: Ethernet1/2
+#   Ethernet1/2:
 #     descr: Customer Server 2 (eth0)
 #     type: access
 #     untagged: 1
 #     shutdown: false
-#   - port: Ethernet1/2
+#   Ethernet1/2:
 #     descr: Customer Server 2 (eth0)
 #     type: access
 #     untagged: 1
 #     shutdown: false
-#   - port: PortChannel1
+#   PortChannel1:
 #     descr: Customer Server 3
 #     type: trunk
 #     untagged: 1
@@ -201,14 +201,14 @@ class CiscoConf(BasicConf):
           ifaces[name]['native_vlan'] = int(m)
           continue
 
-        m = c.re_match_typed(r"^\s*switchport trunk allowed vlan\s+(.+)$")
-        if m:
-          ifaces[name]['allowed_vlan'] = cls._normalize_list(m)
-          continue
-
         m = c.re_match_typed(r"^\s*switchport trunk allowed vlan add\s+(.+)$")
         if m:
           ifaces[name]['allowed_vlan'] += cls._normalize_list(m)
+          continue
+
+        m = c.re_match_typed(r"^\s*switchport trunk allowed vlan\s+(.+)$")
+        if m:
+          ifaces[name]['allowed_vlan'] = cls._normalize_list(m)
           continue
 
         m = c.re_match_typed(r'^\s*(no\s+switchport)\s*$')
@@ -241,6 +241,7 @@ class CiscoConf(BasicConf):
     to_remove = []
     for ifname in ifaces:
       i = ifaces[ifname]
+
       if i['type'] == 'access':
         i['untagged'] = (i['access_vlan'] if 'access_vlan' in i else 1)
       elif i['type'] == 'trunk':
@@ -262,6 +263,11 @@ class CiscoConf(BasicConf):
 
       if not cls._iface_filter(ifname, i):
         to_remove.append(ifname)
+
+      if i['type'] == 'access' and i['untagged'] == 1 and not 'lag' in i and not 'descr' in i and i['shutdown']:
+        ifaces[ifname] = OrderedDict()
+        ifaces[ifname]['clear'] = True
+        continue
 
     for rif in to_remove:
       ifaces.pop(rif, None)
@@ -444,6 +450,12 @@ class ProCurveConf(BasicConf):
       if not 'untagged' in i:
         i['untagged'] = 1
 
+      # mark clear ifaces
+      if i['type'] == 'access' and i['untagged'] == 1 and not 'lag' in i and not 'descr' in i and i['shutdown']:
+        ifaces[ifname] = OrderedDict()
+        ifaces[ifname]['clear'] = True
+        continue
+
     return vlans
 
 
@@ -590,6 +602,11 @@ class BrocadeConf(BasicConf):
           ifaces[ifname]['type'] = 'trunk'
         else:
           ifaces[ifname]['type'] = 'access'
+
+      if i['type'] == 'access' and i['untagged'] == 1 and not 'lag' in i and not 'descr' in i and i['shutdown']:
+        ifaces[ifname] = OrderedDict()
+        ifaces[ifname]['clear'] = True
+        continue
 
     # remove virtual ifaces
     to_remove = []
@@ -839,6 +856,11 @@ class OS10Conf(BasicConf):
       if not cls._iface_filter(ifname, i):
         to_remove.append(ifname)
 
+      if i['type'] == 'access' and i['untagged'] == 1 and not 'lag' in i and not 'descr' in i and i['shutdown']:
+        ifaces[ifname] = OrderedDict()
+        ifaces[ifname]['clear'] = True
+        continue
+
     for rif in to_remove:
       ifaces.pop(rif, None)
 
@@ -877,17 +899,4 @@ class OS10Conf(BasicConf):
     self.cfg['ports'] = self._parse_ifaces(cp, vlans)
     self.cfg['users'] = self._parse_users(cp)
 
-
-def get_box_object(boxtype):
-  t = boxtype.strip().lower()
-  if t == 'cisco' or t == 'ios' or t == 'nxos':
-    return CiscoConf
-  elif t == 'procurve':
-    return ProCurveConf
-  elif t == 'os10' or t == 'dellos10':
-    return OS10Conf
-  elif t == 'brocade':
-    return BrocadeConf
-  else:
-    raise ValueError("Unknown box type: %s" % boxtype)
 
