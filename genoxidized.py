@@ -3,16 +3,12 @@
 import warnings
 warnings.simplefilter("ignore")
 
-import json
 from ansible.parsing.dataloader import DataLoader
 from ansible.vars.manager import VariableManager
 from ansible.inventory.manager import InventoryManager
 import click
-import nak.box
 import nak.batch
 import sys
-import os.path
-import yaml
 
 
 def_inv = 'hosts'
@@ -31,19 +27,15 @@ def main(lim, inv, vault_pass):
   """
   Generate CSV source fox Oxidized based on Ansible inventory.
   """
-  i = nak.batch.AnsibleInventory()
+  i = nak.batch.AnsibleInventory(inv, vault_pass)
   if lim:
     limit = lim
   else:
     limit = None
-  hosts = i.get_hosts(inv, vault_pass, limit)
+  hosts = i.get_hosts(limit)
 
   for h in hosts:
-#    print(str(h))
-    try:
-      print("%s:%s:%s:%s" % (h['inventory_hostname'], get_hosttype(h), h['ansible_user'], h['ansible_password']))
-    except:
-      pass
+    print("%s:%s:%s:%s" % (h['inventory_hostname'], h['model'], h['ansible_user'], h['ansible_password']))
 
   return 0 
   
