@@ -100,12 +100,15 @@ class BasicGen(object):
             pd['tagged'] = sorted(list(set(self.conf['vlans'].keys()) - {pd['untagged']}))
           else:
             raise ValueError('Unsupported tagged value:' % pd['tagged'])
-      return pd
 
 
   @classmethod
   def _compact_int_list(cls, lst):
-    slst = list(sorted([int(x) for x in lst]))
+    try:
+      slst = list(sorted([int(x) for x in lst]))
+    except:
+      print("Error in %s" % str(lst))
+      raise
     s = slst[0]
     l = slst[0]
     for x in slst[1:]:

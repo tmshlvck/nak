@@ -258,12 +258,16 @@ class IOSGen(nak.BasicGen):
   def _hooks(self):
     super()._hooks()
 
-    self.conf['remove_vlans'] = self._compact_int_list(self.conf['remove_vlans'])
+    self.conf['remove_vlans'] = list(self._compact_int_list(self.conf['remove_vlans']))
 
     for p in self.conf['ports']:
       pd = self.conf['ports'][p]
       if 'tagged' in pd:
-        pd['tagged'] = self._compact_int_list(list(set(pd['tagged']) | {pd['untagged'],}))
+        try:
+          pd['tagged'] = list(self._compact_int_list(list(set(pd['tagged']) | {pd['untagged'],})))
+        except:
+          print('%s %s'%(str(p),str(pd)))
+          raise
 
 
 class IOSOldGen(IOSGen):
