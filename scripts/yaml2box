@@ -1,0 +1,49 @@
+#!/usr/bin/env python3
+
+import click
+import yaml
+
+def get_gen_object(boxtype):
+  t = boxtype.strip().lower()
+  if t == 'iosold':
+    import nak.ios
+    return nak.ios.IOSOldGen
+  elif t == 'ios':
+    import nak.ios
+    return nak.ios.IOSGen
+  elif t == 'nxos':
+    import nak.ios
+    return nak.ios.NXOSGen
+  elif t == 'os10' or t == 'dellos10':
+    import nak.os10
+    return nak.os10.OS10Gen
+  else:
+    raise ValueError("Unknown box type: %s" % boxtype)
+
+def merge(a,b):
+  res = a.copy()
+  for k in b:
+    res[k] = b[k]
+  return res
+
+
+@click.command()
+@click.option('-t', '--type', 't', help="ios|nxos|dellos10", required=True)
+@click.argument('yamlfiles', nargs=-1, type=click.File('r'))
+def main(t, yamlfiles):
+  """
+  Generate a config for a box.
+  """
+
+  conf = {}
+  for f in yamlfiles:
+    sc = yaml.load(f, Loader=yaml.Loader)
+    conf = merge(conf, sc)
+
+  go = get_gen_object(t)
+  g = go(conf)
+  print(g.genText())
+  
+if __name__ == '__main__':
+  main()
+

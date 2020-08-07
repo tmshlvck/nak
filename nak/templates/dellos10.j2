@@ -10,17 +10,13 @@ interface vlan{{ v }}
 no interface Vlan{{ v }}
 {%- endfor %}
 
-{%- for u in config.users %}
-{%- for uc in config.users[u] %}
-username {{ u }} {{ uc }}
-{%- endfor %}
-{%- endfor %}
-
-{%- for u in config.clean_users %}
-no username {{ u }}
-{%- endfor %}
-
 {%- for p in config.ports %}
+{%- if config.ports[p].clear %}
+default interface {{ p }}
+interface {{ p }}
+ shutdown
+!
+{%- else %}
 interface {{ p }}
 {%- if config.ports[p].descr %}
  description {{ config.ports[p].descr }}
@@ -54,13 +50,7 @@ interface {{ p }}
  channel-group {{ config.ports[p].lag }} mode {% if config.ports[p].lagmode %}{{ config.ports[p].lagmode }}{% else %}on{% endif %}
 {%- endif %}
 {%- endif %}
-!
-{%- endfor %}
-
-{%- for p in config.clean_ports %}
-default interface {{ p }}
-interface {{ p }}
- shutdown
+{%- endif %}
 !
 {%- endfor %}
 

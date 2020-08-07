@@ -2,35 +2,37 @@
 
 import yaml
 import click
-import nak.boxconf
-
+import nak
 
 def get_boxconf_object(boxtype):
   t = boxtype.strip().lower()
-  if t == 'cisco' or t == 'ios' or t == 'nxos':
-    return nak.boxconf.CiscoConf
+  if t == 'ios' or t == 'nxos':
+    import nak.ios
+    return nak.ios.IOSParser
   elif t == 'procurve':
-    return nak.boxconf.ProCurveConf
+    import nak.procurve
+    return nak.procurve.ProCurveParser
   elif t == 'os10' or t == 'dellos10':
-    return nak.boxconf.OS10Conf
-  elif t == 'brocade':
-    return nak.boxconf.BrocadeConf
+    import nak.os10
+    return nak.os10.OS10Parser
+  elif t == 'ironware':
+    import nak.ironware
+    return nak.ironware.IronwareParser
   else:
     raise ValueError("Unknown box type: %s" % boxtype)
 
 
 @click.command()
-@click.option('-t', '--type', 't', help="ios|nxos|procurve|os10|brocade", required=True)
+@click.option('-t', '--type', 't', help="ios|nxos|procurve|os10|ironware", required=True)
 @click.option('-d', '--debug', 'debugparam')
 @click.argument('files', nargs=-1, type=click.File('r'))
 def main(t, debugparam, files):
-  nak.boxconf.debug = debugparam
+  nak.debug = debugparam
 
   cpo = get_boxconf_object(t)
   for f in files:
-    o = cpo()
-    o.parse_file(f.readlines())
-    print(o.gen_yaml())
+    o = cpo(f.readlines())
+    print(o.genYAML())
  
 
 if __name__ == '__main__':

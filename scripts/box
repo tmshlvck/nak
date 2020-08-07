@@ -6,8 +6,6 @@ warnings.simplefilter("ignore")
 import click
 import nak.box
 
-def_templates = '/opt/nak/templates'
-
 @click.command()
 @click.option('-t', '--type', 't', help="ios|nxos|dellos10", required=True)
 @click.option('-h', '--host', 'h', help="hostname or IP")

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import napalm
-import click
 import jinja2
 import yaml
 import nak.confparse
@@ -32,19 +31,12 @@ class Box(object):
     return self.conn.get_config()['running']
 
 
-  def get_running_parsed(self):
-    cpo = nak.confparse.get_box_object(self.NAPALM_DRIVER)
-    liveconf = cpo()
-    liveconf.parse_file(self.get_running().splitlines())
-    return liveconf
-
-
   # New config generate & apply
 
 
   @classmethod
-  def _gen_text_conf(cls, conf, template_dir='templates'):
-    jenv = jinja2.Environment(loader=jinja2.FileSystemLoader(template_dir), autoescape=False)
+  def _gen_text_conf(cls, conf):
+    jenv = jinja2.Environment(loader=jinja2.PackageLoader('nak', 'templates'), autoescape=False)
     t = jenv.get_template(cls.TEMPLATE)
     return t.render(config=conf)
 
@@ -77,7 +69,7 @@ class Box(object):
     return res
 
 
-  def update_config(self, files, sim=False, template_dir='templates'):
+  def update_config(self, files, sim=False):
     def merge_conf(res, frag):
       for k in frag:
         res[k] = frag[k]
@@ -191,18 +183,11 @@ class OS10Box(Box):
 
     config['clean_ports'] = []
     for p in config['ports']:
-      if not config['ports'][p].get('descr') and config['ports'][p].get('shutdown') and \
-        not config['ports'][p].get('tagged') and config['ports'][p]['untagged'] != 1 and \
-        liveconf.is_iface_configured(p):
+      if config['ports'][p].get('clean'):
         config['clean_ports'].append(p)
 
     for p in config['clean_ports']:
       del(config['ports'][p])
-
-    config['clean_users'] = []
-    for u in liveconf.cfg['users']:
-      if not u in config['users']:
-        config['clean_users'].append(u)
 
     return config
 

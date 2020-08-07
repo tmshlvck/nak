@@ -17,11 +17,13 @@ setup(name='nak',
         'ansible',
         ],
     packages = ['nak', ],
+    package_data = {'nak': ['templates/ios.j2',],},
     scripts = [
-        'box.py',
-        'batchbox.py',
-        'conf2yaml.py',
-        'genoxidized.py'
+        'scripts/batch',
+        'scripts/box',
+        'scripts/yaml2box',
+        'scripts/box2yaml',
+        'scripts/inv2oxidized'
         ],
    )
 
