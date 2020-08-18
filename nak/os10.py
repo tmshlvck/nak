@@ -121,7 +121,7 @@ class OS10Parser(nak.ios.CiscoLikeParser):
 
       if i['type'] == 'access' and i['untagged'] == 1 and not 'lag' in i and not 'descr' in i and i['shutdown']:
         ifaces[ifname] = OrderedDict()
-        ifaces[ifname]['clear'] = True
+        ifaces[ifname]['clean'] = True
         continue
 
     for rif in to_remove:
@@ -166,18 +166,23 @@ class OS10Parser(nak.ios.CiscoLikeParser):
 
 
 
-class OS10Box(nak.BasicGen):
+class OS10Gen(nak.BasicGen):
   IGNORE_VLANS = [1,]
   TEMPLATE = 'dellos10.j2'
 
   def _hook(self):
     super()._hook()
+
+    if not 'remove_ports' in self.conf:
+      self.conf['remove_ports'] = []
+
     for p in self.conf['ports']:
       pd = self.conf['ports'][p]
       if 'tagged' in pd:
         pd['tagged'] = self._compact_int_list(pd['tagged'])
 
-
+      if 'clean' in pd and pd['clean'] and 'port-channel' in p.lower():
+        self.conf['remove_ports'].append(p)
 
 
 

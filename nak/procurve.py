@@ -151,10 +151,10 @@ class ProCurveParser(nak.ios.CiscoLikeParser):
       if not 'untagged' in i:
         i['untagged'] = 1
 
-      # mark clear ifaces
+      # mark clean ifaces
       if (not 'type' in i or i['type'] == 'access') and i['untagged'] == 1 and not 'lag' in i and not 'descr' in i and i['shutdown']:
         ifaces[ifname] = OrderedDict()
-        ifaces[ifname]['clear'] = True
+        ifaces[ifname]['clean'] = True
         continue
 
     return vlans

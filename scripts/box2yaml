@@ -4,32 +4,15 @@ import yaml
 import click
 import nak
 
-def get_boxconf_object(boxtype):
-  t = boxtype.strip().lower()
-  if t == 'ios' or t == 'nxos':
-    import nak.ios
-    return nak.ios.IOSParser
-  elif t == 'procurve':
-    import nak.procurve
-    return nak.procurve.ProCurveParser
-  elif t == 'os10' or t == 'dellos10':
-    import nak.os10
-    return nak.os10.OS10Parser
-  elif t == 'ironware':
-    import nak.ironware
-    return nak.ironware.IronwareParser
-  else:
-    raise ValueError("Unknown box type: %s" % boxtype)
-
 
 @click.command()
-@click.option('-t', '--type', 't', help="ios|nxos|procurve|os10|ironware", required=True)
+@click.option('-t', '--type', 't', help="ios|nxos|procurve|dellos10|ironware", required=True)
 @click.option('-d', '--debug', 'debugparam')
 @click.argument('files', nargs=-1, type=click.File('r'))
 def main(t, debugparam, files):
   nak.debug = debugparam
 
-  cpo = get_boxconf_object(t)
+  cpo = nak.get_parser_object(t)
   for f in files:
     o = cpo(f.readlines())
     print(o.genYAML())

@@ -131,7 +131,7 @@ class IronwareParser(nak.ios.CiscoLikeParser):
 
       if i['type'] == 'access' and i['untagged'] == 1 and not 'lag' in i and not 'descr' in i and i['shutdown']:
         ifaces[ifname] = OrderedDict()
-        ifaces[ifname]['clear'] = True
+        ifaces[ifname]['clean'] = True
         continue
 
     # remove virtual ifaces

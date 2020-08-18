@@ -17,7 +17,7 @@ setup(name='nak',
         'ansible',
         ],
     packages = ['nak', ],
-    package_data = {'nak': ['templates/ios.j2',],},
+    package_data = {'nak': ['templates/ios.j2','templates/dellos10.j2'],},
     scripts = [
         'scripts/batch',
         'scripts/box',

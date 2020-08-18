@@ -6,7 +6,7 @@ from ansible.inventory.manager import InventoryManager
 
 
 class AnsibleInventory(object):
-  def __init__(self, sources, vault_pass):
+  def __init__(self, sources, vault_pass=None):
     """
     sources: ['directory/hosts',]
     vault_pass: str
@@ -16,24 +16,28 @@ class AnsibleInventory(object):
     if vault_pass:
       self.loader.set_vault_password(vault_pass)
     if sources:
-      self.inventory = InventoryManager(loader=self.loader, sources=self.sources)
+      self.inventory = InventoryManager(loader=self.loader, sources=sources)
     else:
       self.inventory = InventoryManager(loader=self.loader)
 
     self.variable_manager = VariableManager(loader=self.loader, inventory=self.inventory)
 
 
-  def getHostsiRaw(self, limit=None):
+  def getHostsRaw(self, limit=None):
     """
     limit: ['host1', 'host2', ...]
     """
 
+    def filter_vars(hostvars):
+      filter_vars = ['ansible_user', 'ansible_password', 'ansible_become_password', 'inventory_hostname', 'inventory_hostname_short', 'group_names', 'nak_confdir', 'nak_preconf']}
+      return {k:(hostvars[k] if k in hostvars else None) for k in filter_vars}
+
     hosts = self.variable_manager.get_vars()['groups']['all']
 
     for h in hosts:
-      hv = self.variable_manager.get_vars(host=inventory.get_host(h))
+      hv = self.variable_manager.get_vars(host=self.inventory.get_host(h))
       if not limit or hv['inventory_hostname'] in limit or hv['inventory_hostname_short'] in limit:
-        yield {k:(hv[k] if k in hv else None) for k in ['ansible_user', 'ansible_password', 'ansible_become_password', 'inventory_hostname', 'inventory_hostname_short', 'group_names']}
+        yield filter_vars(hv)
 
 
   @classmethod
@@ -44,8 +48,8 @@ class AnsibleInventory(object):
     elif 'nxos' in group_names:
       return 'nxos'
 
-    elif 'os10' in group_names or 'dellos10' in group_names:
-      return 'os10'
+    elif 'dellos10' in group_names:
+      return 'dellos10'
 
     elif 'procurve' in group_names:
       return 'procurve'
@@ -67,10 +71,29 @@ class AnsibleInventory(object):
     for h in self.getHostsRaw():
       try:
         h['model'] = self._getType(h['group_names'])
+        yield h
       except:
-        h['model'] = 'Unknown'
-
-      yield h
+        pass
 
 
 
+class AnsibleInventoryPlayer(AnsibleInventory):
+  def __init__(self, sources, vault_pass=None):
+    """
+    sources: ['directory/hosts',]
+    vault_pass: str
+    """
+
+  @classmethod
+  def mergeConfigs(cls, cfgs):
+    """
+      cfgs = [cfg1, cfg2, ...]
+    """
+    res = OrderedDict
+    for c in cfgs:
+      for k in c:
+        res[k] = c[k]
+    return res
+
+  @classmethod  
+  def 

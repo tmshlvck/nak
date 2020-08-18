@@ -189,7 +189,7 @@ class IOSParser(CiscoLikeParser):
 
       if not cls._is_iface_configured(i):
         ifaces[ifname] = OrderedDict()
-        ifaces[ifname]['clear'] = True
+        ifaces[ifname]['clean'] = True
 
     for rif in to_remove:
       ifaces.pop(rif, None)
@@ -248,9 +248,6 @@ class IOSParser(CiscoLikeParser):
     self.cfg['users'] = self._parse_users(cp)
 
 
-
-
-
 class IOSGen(nak.BasicGen):
   IGNORE_VLANS = [1,1002, 1003, 1004, 1005]
   TEMPLATE = 'ios.j2'
@@ -260,14 +257,23 @@ class IOSGen(nak.BasicGen):
 
     self.conf['remove_vlans'] = list(self._compact_int_list(self.conf['remove_vlans']))
 
+    if not 'remove_ports' in self.conf:
+      self.conf['remove_ports'] = []
+
     for p in self.conf['ports']:
       pd = self.conf['ports'][p]
       if 'tagged' in pd:
         try:
           pd['tagged'] = list(self._compact_int_list(list(set(pd['tagged']) | {pd['untagged'],})))
         except:
-          print('%s %s'%(str(p),str(pd)))
+          print('Exception in %s %s'%(str(p),str(pd)))
           raise
+
+      if 'clean' in pd and pd['clean'] and 'porti-channel' in p.lower():
+        self.conf['remove_ports'].append(p)
+
+    for p in self.conf['remove_ports']:
+      del(self.conf['ports'][p])
 
 
 class IOSOldGen(IOSGen):
@@ -279,10 +285,6 @@ class IOSOldGen(IOSGen):
         pd['encap'] = 'dot1q'
         
 
-
-
-class NXOSBox(IOSGen):
-  TEMPLATE = 'nxos.j2'
-
-
+class NXOSGen(IOSGen):
+  pass
 

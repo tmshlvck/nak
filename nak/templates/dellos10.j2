@@ -10,15 +10,18 @@ interface vlan{{ v }}
 no interface Vlan{{ v }}
 {%- endfor %}
 
+{%- for p in config.remove_ports %}
+no interface {{ p }}
+{%- endfor %}
+
 {%- for p in config.ports %}
-{%- if config.ports[p].clear %}
+{%- if config.ports[p].clean %}
 default interface {{ p }}
 interface {{ p }}
  shutdown
-!
 {%- else %}
 interface {{ p }}
-{%- if config.ports[p].descr %}
+{%- if 'descr' in config.ports[p] %}
  description {{ config.ports[p].descr }}
 {%- endif %}
 {%- if config.ports[p].shutdown %}

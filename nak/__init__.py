@@ -6,6 +6,7 @@ import yaml
 import re
 from collections import OrderedDict,defaultdict
 import jinja2
+import napalm
 
 debug=False
 
@@ -75,12 +76,13 @@ class BasicGen(object):
   IGNORE_VLANS = [1,]
 
 
-  def __init__(self, configstruct):
+  def __init__(self, configstruct, active_vlans=range(1,4095)):
     self.conf = configstruct
+    self.active_vlans = active_vlans
 
 
   def _hooks(self):
-    self.conf['remove_vlans'] = sorted(list((set(range(1,4094)) - set(self.IGNORE_VLANS)) - set([int(v) for v in self.conf['vlans']])))
+    self.conf['remove_vlans'] = sorted(list((set(self.active_vlans) - set(self.IGNORE_VLANS)) - set([int(v) for v in self.conf['vlans']])))
     self._expand_port_tagged()
 
 
@@ -127,4 +129,80 @@ class BasicGen(object):
       yield '%d-%d' % (s, l)
     
 
-  
+def get_gen_object(boxtype):
+  t = boxtype.strip().lower()
+  if t == 'iosold':
+    import nak.ios
+    return nak.ios.IOSOldGen
+  elif t == 'ios':
+    import nak.ios
+    return nak.ios.IOSGen
+  elif t == 'nxos':
+    import nak.ios
+    return nak.ios.NXOSGen
+  elif t == 'os10' or t == 'dellos10':
+    import nak.os10
+    return nak.os10.OS10Gen
+  else:
+    raise ValueError("Unknown box type: %s" % boxtype)
+
+
+def get_parser_object(boxtype):
+  t = boxtype.strip().lower()
+  if t == 'ios' or t == 'nxos':
+    import nak.ios
+    return nak.ios.IOSParser
+  elif t == 'procurve':
+    import nak.procurve
+    return nak.procurve.ProCurveParser
+  elif t == 'os10' or t == 'dellos10':
+    import nak.os10
+    return nak.os10.OS10Parser
+  elif t == 'ironware':
+    import nak.ironware
+    return nak.ironware.IronwareParser
+  else:
+    raise ValueError("Unknown box type: %s" % boxtype)
+
+
+class Box(object):
+  global_delay_factor = 0.5
+
+  def __init__(self, boxtype):
+    self.boxtype = boxtype
+
+
+  def connect(self, host, user, passwd, enab=None):
+    self.hostname = host
+    self.driver = napalm.get_network_driver(self.boxtype)
+    if enab:
+      self.conn = self.driver(host, username=user, password=passwd, optional_args={"global_delay_factor": self.global_delay_factor, 'secret': enab})
+    else:
+      self.conn = self.driver(host, username=user, password=passwd, optional_args={"global_delay_factor": self.global_delay_factor})
+    self.conn.open()
+
+
+  def close(self):
+    self.conn.close()
+
+
+  def getRunning(self):
+    return self.conn.get_config()['running']
+
+
+  def configure(self, conf, simulate=False):
+    d("Loading merge candidate for %s (%s)" % (self.hostname, self.boxtype))
+    self.conn.load_merge_candidate(config=conf)
+    if simulate:
+      d("Comparing config for %s (%s)" % (self.hostname, self.boxtype))
+      res = self.conn.compare_config()
+      d("Candidate discard for %s (%s)" % (self.hostname, self.boxtype))
+      self.conn.discard_config()
+    else:
+      d("Candidate commit for %s (%s)" % (self.hostname, self.boxtype))
+      self.conn.commit_config()
+
+    d("Configure finished for %s (%s)" % (self.hostname, self.boxtype))
+    return res
+
+
