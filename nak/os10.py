@@ -173,6 +173,8 @@ class OS10Gen(nak.BasicGen):
   def _hook(self):
     super()._hook()
 
+    self.conf['remove_vlans'] = list(self._compact_int_list(self.conf['remove_vlans']))
+
     if not 'remove_ports' in self.conf:
       self.conf['remove_ports'] = []
 
