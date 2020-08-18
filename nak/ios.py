@@ -269,7 +269,7 @@ class IOSGen(nak.BasicGen):
           print('Exception in %s %s'%(str(p),str(pd)))
           raise
 
-      if 'clean' in pd and pd['clean'] and 'porti-channel' in p.lower():
+      if 'clean' in pd and pd['clean'] and 'port-channel' in p.lower():
         self.conf['remove_ports'].append(p)
 
     for p in self.conf['remove_ports']:
