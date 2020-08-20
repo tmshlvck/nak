@@ -24,7 +24,7 @@ def main(lim, inv, vault_pass):
   hosts = i.getHosts(limit)
 
   for h in hosts:
-    print("%s:%s:%s:%s" % (h['inventory_hostname'], h['model'], h['ansible_user'], h['ansible_password']))
+    print("%s:%s:%s:%s" % (h['inventory_hostname'], h['boxtype'], h['ansible_user'], h['ansible_password']))
 
   return 0 
   

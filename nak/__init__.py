@@ -8,6 +8,9 @@ from collections import OrderedDict,defaultdict
 import jinja2
 import napalm
 
+import nak.inventory
+
+
 debug=False
 
 def d(msg):
@@ -205,4 +208,34 @@ class Box(object):
     d("Configure finished for %s (%s)" % (self.hostname, self.boxtype))
     return res
 
+
+
+class Batch(object):
+  def __init__(self, simulate=False, limit=None, inventory=None, vault_pass=None):
+    self.inv = nak.inventory.AnsibleInventoryConfig([inventory,], vault_pass)
+    self.sim = simulate
+    self.lim = limit
+
+  def run(self):
+    for h,confstruct in self.inv.getHostsWithConfStruct():
+      nak.d("Working on %s" % h['inventory_hostname'])
+      if self.lim and not (h['inventory_hostname'] in self.lim or h['inventory_hostname_short'] in self.lim):
+        nak.d("Skipping %s" % h['inventory_hostname'])
+        continue
+
+      go = get_gen_object(h['boxtype'])
+      textcfg = go(confstruct).genText()
+
+      b = Box(h['boxtype'])
+      if 'ansible_become_password' in h:
+        bcmpasswd = h['ansible_become_password']
+      else:
+        bcmpasswd = None
+      nak.d("Config for %s generated, connecting..." % h['inventory_hostname'])
+      b.connect(h['inventory_hostname'], h['ansible_user'], h['ansible_password'], bcmpasswd)
+      nak.d("Connected to %s . Configuration in progress..." % h['inventory_hostname'])
+      b.configure(textcfg)
+      nak.d("Configuration of %s finished. Closing..." % h['inventory_hostname'])
+      b.close()
+      nak.d("Connection to %s closed." % h['inventory_hostname'])
 
