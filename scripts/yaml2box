@@ -2,7 +2,7 @@
 
 import click
 import yaml
-import nak
+import nak.inventory
 
 
 @click.command()
@@ -13,7 +13,7 @@ def main(t, yamlfiles):
   Generate a config for a box.
   """
 
-  conf = nak.AnsibleInventoryPlayer.mergeConfigs(conf, [yaml.load(f, Loader=yaml.Loader) for f in yamlfiles])
+  conf = nak.inventory.AnsibleInventoryConfigs.mergeConfigs([yaml.load(f, Loader=yaml.Loader) for f in yamlfiles])
 
   go = nak.get_gen_object(t)
   g = go(conf)

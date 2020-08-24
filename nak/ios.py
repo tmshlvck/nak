@@ -4,7 +4,7 @@ import ciscoconfparse
 import re
 from collections import OrderedDict,defaultdict
 import nak
-from nak import d
+from nak import log
 
 
 class CiscoLikeParser(nak.BasicParser):
@@ -157,7 +157,7 @@ class IOSParser(CiscoLikeParser):
         if m:
           ifaces[name]['mtu'] = int(m)
  
-        d("Ignored: %s" % (c.text))
+        log.debug("Ignored: %s", c.text)
 
     to_remove = []
     for ifname in ifaces:
@@ -232,7 +232,7 @@ class IOSParser(CiscoLikeParser):
             vlans[vid]['name'] = m
             continue
         
-          d("Ignored: %s" % (c.text))
+          log.debug("Ignored: %s", c.text)
 
     return vlans
 

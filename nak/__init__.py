@@ -7,16 +7,12 @@ import re
 from collections import OrderedDict,defaultdict
 import jinja2
 import napalm
+import logging
 
 import nak.inventory
 
 
-debug=False
-
-def d(msg):
-  if debug:
-    print(msg, file=sys.stdout)
-
+log = logging.getLogger('nak')
 
 
 # Data Model:
@@ -77,11 +73,14 @@ class BasicParser(object):
 
 class BasicGen(object):
   IGNORE_VLANS = [1,]
+  CFG_VLAN_RANGE = range(2,4095)
 
-
-  def __init__(self, configstruct, active_vlans=range(1,4095)):
+  def __init__(self, configstruct, active_vlans=None):
     self.conf = configstruct
-    self.active_vlans = active_vlans
+    if active_vlans:
+      self.active_vlans = active_vlans
+    else:
+      self.active_vlans = self.CFG_VLAN_RANGE
 
 
   def _hooks(self):
@@ -112,7 +111,7 @@ class BasicGen(object):
     try:
       slst = list(sorted([int(x) for x in lst]))
     except:
-      print("Error in %s" % str(lst))
+      print("Error compacting int list %s" % str(lst))
       raise
     s = slst[0]
     l = slst[0]
@@ -194,34 +193,38 @@ class Box(object):
 
 
   def configure(self, conf, simulate=False):
-    d("Loading merge candidate for %s (%s)" % (self.hostname, self.boxtype))
+    log.debug("Loading merge candidate for %s (%s)", self.hostname, self.boxtype)
     self.conn.load_merge_candidate(config=conf)
     if simulate:
-      d("Comparing config for %s (%s)" % (self.hostname, self.boxtype))
+      log.debug("Comparing config for %s (%s)", self.hostname, self.boxtype)
       res = self.conn.compare_config()
-      d("Candidate discard for %s (%s)" % (self.hostname, self.boxtype))
+      log.debug("Candidate discard for %s (%s)", self.hostname, self.boxtype)
       self.conn.discard_config()
     else:
-      d("Candidate commit for %s (%s)" % (self.hostname, self.boxtype))
+      log.debug("Candidate commit for %s (%s)", self.hostname, self.boxtype)
       self.conn.commit_config()
+      res = conf
 
-    d("Configure finished for %s (%s)" % (self.hostname, self.boxtype))
+    log.debug("Configure finished for %s (%s)", self.hostname, self.boxtype)
     return res
 
 
 
 class Batch(object):
   def __init__(self, simulate=False, limit=None, inventory=None, vault_pass=None):
-    self.inv = nak.inventory.AnsibleInventoryConfig([inventory,], vault_pass)
+    self.inv = nak.inventory.AnsibleInventoryConfigs([inventory,], vault_pass)
     self.sim = simulate
     self.lim = limit
 
-  def run(self):
-    for h,confstruct in self.inv.getHostsWithConfStruct():
-      nak.d("Working on %s" % h['inventory_hostname'])
-      if self.lim and not (h['inventory_hostname'] in self.lim or h['inventory_hostname_short'] in self.lim):
-        nak.d("Skipping %s" % h['inventory_hostname'])
-        continue
+  def runAllSerial(self):
+    for h,confstruct in self.inv.getHostsWithConfStruct(self.lim):
+      self.runForHost(h, confstruct)
+
+  def runAllParallel(self):
+    pass
+
+  def runForHost(self, h, confstruct):
+      log.debug("Working on %s", h['inventory_hostname'])
 
       go = get_gen_object(h['boxtype'])
       textcfg = go(confstruct).genText()
@@ -231,11 +234,14 @@ class Batch(object):
         bcmpasswd = h['ansible_become_password']
       else:
         bcmpasswd = None
-      nak.d("Config for %s generated, connecting..." % h['inventory_hostname'])
+      log.debug("Config for %s generated, connecting...", h['inventory_hostname'])
       b.connect(h['inventory_hostname'], h['ansible_user'], h['ansible_password'], bcmpasswd)
-      nak.d("Connected to %s . Configuration in progress..." % h['inventory_hostname'])
-      b.configure(textcfg)
-      nak.d("Configuration of %s finished. Closing..." % h['inventory_hostname'])
+      log.debug("Connected to %s . Configuration in progress...", h['inventory_hostname'])
+      res = b.configure(textcfg, simulate=self.sim)
+      if self.sim:
+        print("Config diff:")
+        print(str(res))
+      log.debug("Configuration of %s finished. Closing...", h['inventory_hostname'])
       b.close()
-      nak.d("Connection to %s closed." % h['inventory_hostname'])
+      log.debug("Connection to %s closed.", h['inventory_hostname'])
 

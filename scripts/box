@@ -31,6 +31,7 @@ def main(t, h, u, p, e, d, c, s, files):
     config = "\n".join(sys.stdin.readlines())
     res = b.configure(config, s)
     if s:
+      print("Config Diff: ")
       print(str(res))
   else:
     print("No action (download|apply) specified.")

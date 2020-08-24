@@ -5,7 +5,7 @@ import yaml
 import re
 from collections import OrderedDict,defaultdict
 import nak.ios
-from nak import d
+from nak import log
 
 
 class IronwareParser(nak.ios.CiscoLikeParser):
@@ -103,7 +103,7 @@ class IronwareParser(nak.ios.CiscoLikeParser):
             else:
               ifaces[name]['untagged'] = 1
         
-        d("Ignored: %s" % (c.text))
+        log.debug("Ignored: %s", c.text)
 
     for ifname in ifaces:
       if not 'untagged' in ifaces[ifname]:
@@ -206,7 +206,7 @@ vlan 16 name TI-Management by port
 
           continue
         
-        d("Ignored: %s" % (c.text))
+        log.debug("Ignored: %s", c.text)
 
     return vlans
 

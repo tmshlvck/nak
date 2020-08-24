@@ -7,10 +7,11 @@ import nak
 
 @click.command()
 @click.option('-t', '--type', 't', help="ios|nxos|procurve|dellos10|ironware", required=True)
-@click.option('-d', '--debug', 'debugparam')
+@click.option('-d', '--debug', 'debugparam', is_flag=True)
 @click.argument('files', nargs=-1, type=click.File('r'))
 def main(t, debugparam, files):
-  nak.debug = debugparam
+  if debugparam:
+    logging.basicConfig(level=logging.DEBUG)
 
   cpo = nak.get_parser_object(t)
   for f in files:

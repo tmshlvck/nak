@@ -5,7 +5,7 @@ import re
 from collections import OrderedDict,defaultdict
 import nak
 import nak.ios
-from nak import d
+from nak import log
 
 
 
@@ -93,7 +93,7 @@ class OS10Parser(nak.ios.CiscoLikeParser):
         if m:
           ifaces[name]['mtu'] = int(m)-22 # OS10 has WEIRD MTU computation - they count the Eth header including 802.1Q tag and the CRC trailer, all sums up to 22 bytes more than what Cisco/others call MTUa (= L3 datagram size)
         
-        d("Ignored: %s" % (c.text))
+        log.debug("Ignored: %s", c.text)
 
     to_remove = []
     for ifname in ifaces:
@@ -147,7 +147,7 @@ class OS10Parser(nak.ios.CiscoLikeParser):
             vlans[vid]['name'] = m
             continue
         
-        d("Ignored: %s" % (c.text))
+        log.debug("Ignored: %s", c.text)
 
     return vlans
 
@@ -169,9 +169,10 @@ class OS10Parser(nak.ios.CiscoLikeParser):
 class OS10Gen(nak.BasicGen):
   IGNORE_VLANS = [1,]
   TEMPLATE = 'dellos10.j2'
+  CFG_VLAN_RANGE = range(2,4094)
 
-  def _hook(self):
-    super()._hook()
+  def _hooks(self):
+    super()._hooks()
 
     self.conf['remove_vlans'] = list(self._compact_int_list(self.conf['remove_vlans']))
 
@@ -186,5 +187,6 @@ class OS10Gen(nak.BasicGen):
       if 'clean' in pd and pd['clean'] and 'port-channel' in p.lower():
         self.conf['remove_ports'].append(p)
 
-
+    for p in self.conf['remove_ports']:
+      del(self.conf['ports'][p])
 

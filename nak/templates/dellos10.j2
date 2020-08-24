@@ -7,10 +7,10 @@ interface vlan{{ v }}
 {%- endfor %}
 
 {%- for v in config.remove_vlans %}
-{%- if '-' in v %}
-no interface range Vlan{{ v }}
+{%- if '-' in v|string %}
+no interface range vlan {{ v }}
 {%- else %}
-no interface Vlan{{ v }}
+no interface vlan{{ v }}
 {%- endif %}
 {%- endfor %}
 

@@ -5,7 +5,7 @@ import re
 from collections import OrderedDict,defaultdict
 import nak
 import nak.ios
-from nak import d
+from nak import log
 
 
         
@@ -52,7 +52,7 @@ class ProCurveParser(nak.ios.CiscoLikeParser):
           ifaces[name]['lagmode'] = 'on'
           continue
         
-        d("Ignored: %s" % (c.text))
+        log.debug("Ignored: %s", c.text)
 
 
     for o in cp.find_objects(r"^\s*trunk"):
@@ -140,7 +140,7 @@ class ProCurveParser(nak.ios.CiscoLikeParser):
 
             continue
         
-          d("Ignored: %s" % (c.text))
+          log.debug("Ignored: %s", c.text)
 
     # fill gaps
     for ifname in ifaces:
