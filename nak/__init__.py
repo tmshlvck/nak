@@ -7,12 +7,16 @@ import re
 from collections import OrderedDict,defaultdict
 import jinja2
 import napalm
-import logging
 
 import nak.inventory
 
 
-log = logging.getLogger('nak')
+debug=False
+
+def d(msg):
+  if debug:
+    print(msg, file=sys.stdout)
+
 
 
 # Data Model:
@@ -193,38 +197,53 @@ class Box(object):
 
 
   def configure(self, conf, simulate=False):
-    log.debug("Loading merge candidate for %s (%s)", self.hostname, self.boxtype)
+    d("Loading merge candidate for %s (%s)" % (self.hostname, self.boxtype))
     self.conn.load_merge_candidate(config=conf)
     if simulate:
-      log.debug("Comparing config for %s (%s)", self.hostname, self.boxtype)
+      d("Comparing config for %s (%s)" % (self.hostname, self.boxtype))
       res = self.conn.compare_config()
-      log.debug("Candidate discard for %s (%s)", self.hostname, self.boxtype)
+      d("Candidate discard for %s (%s)" % (self.hostname, self.boxtype))
       self.conn.discard_config()
     else:
-      log.debug("Candidate commit for %s (%s)", self.hostname, self.boxtype)
+      d("Candidate commit for %s (%s)" % (self.hostname, self.boxtype))
       self.conn.commit_config()
       res = conf
 
-    log.debug("Configure finished for %s (%s)", self.hostname, self.boxtype)
+    d("Configure finished for %s (%s)" % (self.hostname, self.boxtype))
     return res
 
 
 
 class Batch(object):
+  MAX_THREADS = 50
+
   def __init__(self, simulate=False, limit=None, inventory=None, vault_pass=None):
-    self.inv = nak.inventory.AnsibleInventoryConfigs([inventory,], vault_pass)
+    kwargs = {}
+    if inventory:
+      kwargs['inventory'] = inventory
+    if vault_pass:
+      kwargs['vault_pass'] = vault_pass
+    self.inv = nak.inventory.AnsibleInventoryConfigs(**kwargs)
     self.sim = simulate
     self.lim = limit
+
 
   def runAllSerial(self):
     for h,confstruct in self.inv.getHostsWithConfStruct(self.lim):
       self.runForHost(h, confstruct)
 
+
   def runAllParallel(self):
-    pass
+    def _runForHost(args):
+      self, h, cfs = args
+      self.runForHost(h, cfs)
+
+    p = multiprocessing.pool.ThreadPool(self.MAX_THREADS)
+    p.map(_runForHost, [(self, h, cfs) for h, cfs in self.inv.getHostsWithConfStruct(self.lim)])
+
 
   def runForHost(self, h, confstruct):
-      log.debug("Working on %s", h['inventory_hostname'])
+      nak.d("Working on %s" % h['inventory_hostname'])
 
       go = get_gen_object(h['boxtype'])
       textcfg = go(confstruct).genText()
@@ -234,14 +253,14 @@ class Batch(object):
         bcmpasswd = h['ansible_become_password']
       else:
         bcmpasswd = None
-      log.debug("Config for %s generated, connecting...", h['inventory_hostname'])
+      nak.d("Config for %s generated, connecting..." % h['inventory_hostname'])
       b.connect(h['inventory_hostname'], h['ansible_user'], h['ansible_password'], bcmpasswd)
-      log.debug("Connected to %s . Configuration in progress...", h['inventory_hostname'])
+      nak.d("Connected to %s . Configuration in progress..." % h['inventory_hostname'])
       res = b.configure(textcfg, simulate=self.sim)
       if self.sim:
         print("Config diff:")
         print(str(res))
-      log.debug("Configuration of %s finished. Closing...", h['inventory_hostname'])
+      nak.d("Configuration of %s finished. Closing..." % h['inventory_hostname'])
       b.close()
-      log.debug("Connection to %s closed.", h['inventory_hostname'])
+      nak.d("Connection to %s closed." % h['inventory_hostname'])
 

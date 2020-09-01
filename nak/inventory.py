@@ -10,7 +10,7 @@ from collections import OrderedDict
 import nak
 
 class AnsibleInventory(object):
-  def __init__(self, sources, vault_pass=None):
+  def __init__(self, sources=['/etc/inventory/hosts',], vault_pass=None):
     """
     sources: ['directory/hosts',]
     vault_pass: str
