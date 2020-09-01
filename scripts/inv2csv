@@ -15,7 +15,7 @@ def_inv = 'hosts'
 @click.option('-d', '--delimiter', 'delim', help="CSV field delimiter (default ':')", default=':')
 def main(lim, inv, vault_pass):
   """
-  Generate CSV source fox Oxidized based on Ansible inventory.
+  Generate CSV source not only for Oxidized based on Ansible inventory.
   """
   i = nak.inventory.AnsibleInventory(invs, vault_pass, delim)
   hosts = i.getHosts(lim)
