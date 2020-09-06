@@ -23,7 +23,7 @@ setup(name='nak',
         'scripts/box',
         'scripts/yaml2box',
         'scripts/box2yaml',
-        'scripts/inv2oxidized'
+        'scripts/inv2csv'
         ],
    )
 
