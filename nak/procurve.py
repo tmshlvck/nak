@@ -3,11 +3,10 @@
 import ciscoconfparse
 import re
 from collections import OrderedDict,defaultdict
+import logging
+
 import nak
 import nak.ios
-from nak import log
-
-
         
  
 
@@ -52,7 +51,7 @@ class ProCurveParser(nak.ios.CiscoLikeParser):
           ifaces[name]['lagmode'] = 'on'
           continue
         
-        log.debug("Ignored: %s", c.text)
+        logging.debug("Ignored: %s", c.text)
 
 
     for o in cp.find_objects(r"^\s*trunk"):
@@ -140,7 +139,7 @@ class ProCurveParser(nak.ios.CiscoLikeParser):
 
             continue
         
-          log.debug("Ignored: %s", c.text)
+          logging.debug("Ignored: %s", c.text)
 
     # fill gaps
     for ifname in ifaces:
@@ -173,9 +172,13 @@ class ProCurveParser(nak.ios.CiscoLikeParser):
 
   def parseConfig(self, config):
     cp = ciscoconfparse.CiscoConfParse(config)
-    o = list(cp.find_objects(r"^\s*hostname\s+(.+)$"))[0]
-    hostname = o.re_match_typed(r"^\s*hostname\s+(.+)$").strip()
+
+    o = list(cp.find_objects(r"^\s*hostname\s+(.+)$"))
+    if not o:
+      raise ValueError("Can not parse config without hostname")
+    hostname = o[0].re_match_typed(r"^\s*hostname\s+(.+)$").strip()
     self.cfg['hostname'] = hostname
+
     ports = self._parse_ifaces(cp)
     self.cfg['ports'] = ports
     self.cfg['vlans'] = self._parse_vlans(cp, ports)

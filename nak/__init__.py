@@ -7,15 +7,10 @@ import re
 from collections import OrderedDict,defaultdict
 import jinja2
 import napalm
+import logging
 
 import nak.inventory
 
-
-debug=False
-
-def d(msg):
-  if debug:
-    print(msg, file=sys.stdout)
 
 
 
@@ -230,19 +225,25 @@ class Batch(object):
 
   def runAllSerial(self):
     for h,confstruct in self.inv.getHostsWithConfStruct(self.lim):
-      self.runForHost(h, confstruct)
+      print(self.runForHost(h, confstruct))
 
 
   def runAllParallel(self):
     def _runForHost(args):
-      self, h, cfs = args
-      self.runForHost(h, cfs)
+      try:
+        self, h, cfs = args
+        return self.runForHost(h, cfs)
+      except Exception as e:
+        return 'Error for %s : %s' % (h['inventory_hostname'], str(e))
 
     p = multiprocessing.pool.ThreadPool(self.MAX_THREADS)
-    p.map(_runForHost, [(self, h, cfs) for h, cfs in self.inv.getHostsWithConfStruct(self.lim)])
+    report = p.map(_runForHost, [(self, h, cfs) for h, cfs in self.inv.getHostsWithConfStruct(self.lim)])
+    for r in report:
+      print(r)
 
 
   def runForHost(self, h, confstruct):
+      ret = ""
       nak.d("Working on %s" % h['inventory_hostname'])
 
       go = get_gen_object(h['boxtype'])
@@ -258,9 +259,12 @@ class Batch(object):
       nak.d("Connected to %s . Configuration in progress..." % h['inventory_hostname'])
       res = b.configure(textcfg, simulate=self.sim)
       if self.sim:
-        print("Config diff:")
-        print(str(res))
+        ret+=("Config diff for %s:\n" % h['inventory_hostname'])
+        ret+=str(res)
+        ret+="\n"
       nak.d("Configuration of %s finished. Closing..." % h['inventory_hostname'])
       b.close()
+      ret+="Configuration of %s finished.\n" % h['inventory_hostname']
       nak.d("Connection to %s closed." % h['inventory_hostname'])
+      return ret
 

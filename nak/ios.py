@@ -3,8 +3,9 @@
 import ciscoconfparse
 import re
 from collections import OrderedDict,defaultdict
+import logging
+
 import nak
-from nak import log
 
 
 class CiscoLikeParser(nak.BasicParser):
@@ -157,7 +158,7 @@ class IOSParser(CiscoLikeParser):
         if m:
           ifaces[name]['mtu'] = int(m)
  
-        log.debug("Ignored: %s", c.text)
+        logging.debug("Ignored: %s", c.text)
 
     to_remove = []
     for ifname in ifaces:
@@ -203,7 +204,7 @@ class IOSParser(CiscoLikeParser):
       return True
     if 'tagged' in p:
       return True
-    if p['untagged'] != 1:
+    if 'untagged' in p and p['untagged'] != 1:
       return True
     if 'shutdown' in p and p['shutdown']:
       return False
@@ -232,16 +233,20 @@ class IOSParser(CiscoLikeParser):
             vlans[vid]['name'] = m
             continue
         
-          log.debug("Ignored: %s", c.text)
+          logging.debug("Ignored: %s", c.text)
 
     return vlans
 
 
   def parseConfig(self, conffile):
     cp = ciscoconfparse.CiscoConfParse(conffile)
-    o = list(cp.find_objects(r"^\s*hostname\s+(.+)$"))[0]
-    hostname = o.re_match_typed(r"^\s*hostname\s+(.+)$").strip()
+
+    o = list(cp.find_objects(r"^\s*hostname\s+(.+)$"))
+    if not o:
+      raise ValueError("Can not parse config without hostname")
+    hostname = o[0].re_match_typed(r"^\s*hostname\s+(.+)$").strip()
     self.cfg['hostname'] = hostname
+
     vlans = self._parse_vlans(cp)
     self.cfg['vlans'] = vlans
     self.cfg['ports'] = self._parse_ifaces(cp, vlans)

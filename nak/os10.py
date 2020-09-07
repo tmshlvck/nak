@@ -3,9 +3,10 @@
 import ciscoconfparse
 import re
 from collections import OrderedDict,defaultdict
+import logging
+
 import nak
 import nak.ios
-from nak import log
 
 
 
@@ -93,7 +94,7 @@ class OS10Parser(nak.ios.CiscoLikeParser):
         if m:
           ifaces[name]['mtu'] = int(m)-22 # OS10 has WEIRD MTU computation - they count the Eth header including 802.1Q tag and the CRC trailer, all sums up to 22 bytes more than what Cisco/others call MTUa (= L3 datagram size)
         
-        log.debug("Ignored: %s", c.text)
+        logging.debug("Ignored: %s", c.text)
 
     to_remove = []
     for ifname in ifaces:
@@ -147,16 +148,20 @@ class OS10Parser(nak.ios.CiscoLikeParser):
             vlans[vid]['name'] = m
             continue
         
-        log.debug("Ignored: %s", c.text)
+        logging.debug("Ignored: %s", c.text)
 
     return vlans
 
 
   def parseConfig(self, config):
     cp = ciscoconfparse.CiscoConfParse(config)
-    o = list(cp.find_objects(r"^\s*hostname\s+(.+)$"))[0]
-    hostname = o.re_match_typed(r"^\s*hostname\s+(.+)$").strip()
+
+    o = list(cp.find_objects(r"^\s*hostname\s+(.+)$"))
+    if not o:
+      raise ValueError("Can not parse config without hostname")
+    hostname = o[0].re_match_typed(r"^\s*hostname\s+(.+)$").strip()
     self.cfg['hostname'] = hostname
+
     vlans = self._parse_vlans(cp)
     self.cfg['vlans'] = vlans
     self.cfg['ports'] = self._parse_ifaces(cp, vlans)
