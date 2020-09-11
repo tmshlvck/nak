@@ -28,7 +28,7 @@ def main(s, v, r, lim, invs, vault_pass):
   if v:
     logging.basicConfig(level=logging.DEBUG)
 
-  b = nak.Batch(simulate=s, limit=lim, inventory=invs, vault_pass=vault_pass)
+  b = nak.Batch(simulate=s, limit=lim, invs=invs, vault_pass=vault_pass)
 
   if r:
     b.runAllSerial()

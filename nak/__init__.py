@@ -8,6 +8,8 @@ from collections import OrderedDict,defaultdict
 import jinja2
 import napalm
 import logging
+import multiprocessing.pool
+import traceback
 
 import nak.inventory
 
@@ -99,8 +101,11 @@ class BasicGen(object):
       pd = self.conf['ports'][p]
       if 'tagged' in pd:
         if type(pd['tagged']) is str:
-          if pd['tagged'].lower() == 'all' or pd['tagged'] == '*':
-            pd['tagged'] = sorted(list(set(self.conf['vlans'].keys()) - {pd['untagged']}))
+          if (pd['tagged'].lower() == 'all' or pd['tagged'] == '*'):
+            if 'untagged' in pd:
+              pd['tagged'] = sorted(list(set(self.conf['vlans'].keys()) - {pd['untagged']}))
+            else:
+              pd['tagged'] = sorted(list(set(self.conf['vlans'].keys())))
           else:
             raise ValueError('Unsupported tagged value:' % pd['tagged'])
 
@@ -174,6 +179,7 @@ class Box(object):
 
 
   def connect(self, host, user, passwd, enab=None):
+    logging.debug("Connecting to host %s with driver %s", host, self.boxtype)
     self.hostname = host
     self.driver = napalm.get_network_driver(self.boxtype)
     if enab:
@@ -192,19 +198,19 @@ class Box(object):
 
 
   def configure(self, conf, simulate=False):
-    d("Loading merge candidate for %s (%s)" % (self.hostname, self.boxtype))
+    logging.debug("Loading merge candidate for %s (%s)", self.hostname, self.boxtype)
     self.conn.load_merge_candidate(config=conf)
     if simulate:
-      d("Comparing config for %s (%s)" % (self.hostname, self.boxtype))
+      logging.debug("Comparing config for %s (%s)", self.hostname, self.boxtype)
       res = self.conn.compare_config()
-      d("Candidate discard for %s (%s)" % (self.hostname, self.boxtype))
+      logging.debug("Candidate discard for %s (%s)", self.hostname, self.boxtype)
       self.conn.discard_config()
     else:
-      d("Candidate commit for %s (%s)" % (self.hostname, self.boxtype))
+      logging.debug("Candidate commit for %s (%s)", self.hostname, self.boxtype)
       self.conn.commit_config()
       res = conf
 
-    d("Configure finished for %s (%s)" % (self.hostname, self.boxtype))
+    logging.debug("Configure finished for %s (%s)", self.hostname, self.boxtype)
     return res
 
 
@@ -212,10 +218,16 @@ class Box(object):
 class Batch(object):
   MAX_THREADS = 50
 
-  def __init__(self, simulate=False, limit=None, inventory=None, vault_pass=None):
+  def __init__(self, simulate=False, limit=None, invs=None, vault_pass=None):
+    """
+      bool simulate
+      limit = ['hostname1', 'fqdn2.domain.eu'] or None
+      invs = ['/etc/ansible/hosts', ...]
+      str vault_pass
+    """
     kwargs = {}
-    if inventory:
-      kwargs['inventory'] = inventory
+    if invs:
+      kwargs['sources'] = invs
     if vault_pass:
       kwargs['vault_pass'] = vault_pass
     self.inv = nak.inventory.AnsibleInventoryConfigs(**kwargs)
@@ -234,8 +246,7 @@ class Batch(object):
         self, h, cfs = args
         return self.runForHost(h, cfs)
       except Exception as e:
-        return 'Error for %s : %s' % (h['inventory_hostname'], str(e))
-
+        return 'Error for %s : %s' % (h['inventory_hostname'], "\n".join(traceback.format_list(traceback.extract_tb(sys.exc_info()[2]))))
     p = multiprocessing.pool.ThreadPool(self.MAX_THREADS)
     report = p.map(_runForHost, [(self, h, cfs) for h, cfs in self.inv.getHostsWithConfStruct(self.lim)])
     for r in report:
@@ -244,7 +255,7 @@ class Batch(object):
 
   def runForHost(self, h, confstruct):
       ret = ""
-      nak.d("Working on %s" % h['inventory_hostname'])
+      logging.debug("Working on %s" % h['inventory_hostname'])
 
       go = get_gen_object(h['boxtype'])
       textcfg = go(confstruct).genText()
@@ -254,17 +265,17 @@ class Batch(object):
         bcmpasswd = h['ansible_become_password']
       else:
         bcmpasswd = None
-      nak.d("Config for %s generated, connecting..." % h['inventory_hostname'])
+      logging.debug("Config for %s generated, connecting..." % h['inventory_hostname'])
       b.connect(h['inventory_hostname'], h['ansible_user'], h['ansible_password'], bcmpasswd)
-      nak.d("Connected to %s . Configuration in progress..." % h['inventory_hostname'])
+      logging.debug("Connected to %s . Configuration in progress..." % h['inventory_hostname'])
       res = b.configure(textcfg, simulate=self.sim)
       if self.sim:
         ret+=("Config diff for %s:\n" % h['inventory_hostname'])
         ret+=str(res)
         ret+="\n"
-      nak.d("Configuration of %s finished. Closing..." % h['inventory_hostname'])
+      logging.debug("Configuration of %s finished. Closing..." % h['inventory_hostname'])
       b.close()
       ret+="Configuration of %s finished.\n" % h['inventory_hostname']
-      nak.d("Connection to %s closed." % h['inventory_hostname'])
+      logging.debug("Connection to %s closed." % h['inventory_hostname'])
       return ret
 

@@ -42,6 +42,8 @@ interface {{ p }}
  switchport mode trunk
 {%- if config.ports[p].untagged %}
  switchport access vlan {{ config.ports[p].untagged }}
+{%- else %}
+ no switchport access vlan
 {%- endif %}
 {%- if config.ports[p].tagged %}
  switchport trunk allowed vlan {% for v in config.ports[p].tagged %}{{ v }}{{ "," if not loop.last }}{% endfor %}
@@ -56,6 +58,11 @@ interface {{ p }}
 {%- if config.ports[p].lag %}
  channel-group {{ config.ports[p].lag }} mode {% if config.ports[p].lagmode %}{{ config.ports[p].lagmode }}{% else %}on{% endif %}
 {%- endif %}
+{%- endif %}
+{%- if config.ports[p].extra %}
+{%- for e in config.ports[p].extra %}
+ {{e}}
+{%- endfor %}
 {%- endif %}
 {%- endif %}
 !

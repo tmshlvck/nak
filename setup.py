@@ -19,7 +19,7 @@ setup(name='nak',
     packages = ['nak', ],
     package_data = {'nak': ['templates/ios.j2','templates/dellos10.j2'],},
     scripts = [
-        'scripts/batch',
+        'scripts/nak',
         'scripts/box',
         'scripts/yaml2box',
         'scripts/box2yaml',

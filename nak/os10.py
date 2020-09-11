@@ -36,6 +36,9 @@ class OS10Parser(nak.ios.CiscoLikeParser):
       if not name:
         raise Exception("Wrong interface: %s" % str(o))
 
+      if 'breakout' in name:
+        continue
+
       if not name in ifaces:
         ifaces[name] = OrderedDict()
         ifaces[name]['shutdown'] = False
@@ -103,7 +106,8 @@ class OS10Parser(nak.ios.CiscoLikeParser):
         i['type'] = 'access'
       i['untagged'] = (i['access_vlan'] if 'access_vlan' in i else 1)
       if 'allowed_vlan' in i:
-        i['tagged'] = sorted(list(set(i['allowed_vlan']) - {i['untagged']}))
+        utg = ({i['untagged']} if 'untagged' in i else set())
+        i['tagged'] = sorted(list(set(i['allowed_vlan']) - utg))
 
       i.pop('access_vlan', None)
       i.pop('allowed_vlan', None)

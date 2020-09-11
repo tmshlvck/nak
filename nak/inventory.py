@@ -6,6 +6,7 @@ from ansible.inventory.manager import InventoryManager
 import os.path
 import yaml
 from collections import OrderedDict
+import logging
 
 import nak
 
@@ -41,7 +42,7 @@ class AnsibleInventory(object):
     for h in hosts:
       hv = self.variable_manager.get_vars(host=self.inventory.get_host(h))
       if not limit or hv['inventory_hostname'] in limit or hv['inventory_hostname_short'] in limit:
-        #nak.d("Skipping %s due to limit." % h['inventory_hostname'])
+        #logging.debug("Skipping %s due to limit." % h['inventory_hostname'])
         yield filter_vars(hv)
 
 
@@ -106,7 +107,7 @@ class AnsibleInventoryConfigs(AnsibleInventory):
   def getHostsWithConfPaths(self, limit=None):
     for h in self.getHosts(limit):
       if not self.isTypeSupported(h['boxtype']):
-        nak.d('Skipping unsupported host %s' % h['inventory_hostname'])
+        logging.debug('Skipping unsupported host %s', h['inventory_hostname'])
         continue
 
       if 'nak_commonconf' in h and h['nak_commonconf']:
@@ -134,6 +135,9 @@ class AnsibleInventoryConfigs(AnsibleInventory):
 
       with open(hcp, 'r') as fh:
         hc = yaml.load(fh, Loader=yaml.Loader)
+
+      if not hc:
+        raise Exception("Missing config file %s for host %s", hcp, str(h))
 
       yield (h, self.mergeConfigs([cc, hc]))
 
