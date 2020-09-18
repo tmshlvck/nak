@@ -175,27 +175,141 @@ class OS10Parser(nak.ios.CiscoLikeParser):
 
 
 
-class OS10Gen(nak.BasicGen):
+class OS10Box(nak.BasicGen,nak.Box):
   IGNORE_VLANS = [1,]
-  TEMPLATE = 'dellos10.j2'
-  CFG_VLAN_RANGE = range(2,4094)
 
-  def _hooks(self):
-    super()._hooks()
+  def __init__(self):
+    super().__init__("dellos10")
 
-    self.conf['remove_vlans'] = list(self._compact_int_list(self.conf['remove_vlans']))
+  def genSyncVLANS(self, newconf, activeconf):
+    for vid in set(activeconf['vlans'])-set(newconf['vlans']):
+      if not vid in self.IGNORE_VLANS:
+        yield "no interface vlan%d" % vid
 
-    if not 'remove_ports' in self.conf:
-      self.conf['remove_ports'] = []
+    for vid in newconf['vlans']:
+      if not vid in self.IGNORE_VLANS:
+        yield "interface vlan%d" % vid
+        if 'name' in newconf['vlans'][vid]:
+          yield " description %s" % self._normalize_namestr(newconf['vlans'][vid]['name'])
+        yield '!'
 
-    for p in self.conf['ports']:
-      pd = self.conf['ports'][p]
+  def genSyncPhysPorts(self, newconf, activeconf, pattern="ethernet"):
+    def _expand_tagged_vlans(conf, p):
+      if not p in conf['ports']:
+        return None
+
+      pd = conf['ports'][p]
       if 'tagged' in pd:
-        pd['tagged'] = self._compact_int_list(pd['tagged'])
+        if not pd['tagged']:
+          return None
 
-      if 'clean' in pd and pd['clean'] and 'port-channel' in p.lower():
-        self.conf['remove_ports'].append(p)
+        if type(pd['tagged']) is str:
+          if (pd['tagged'].lower() == 'all' or pd['tagged'] == '*'):
+              return conf['vlans'].keys()
+          else:
+            raise ValueError('Unsupported tagged value:' % tgt)
+        else:
+          if 'untagged' in pd:
+            try:
+              pd['tagged'] = list((set(pd['tagged']) - {pd['untagged'],}))
+            except:
+              print('DEBUG: Exception in %s %s'%(str(p),str(pd)))
+              raise
+          return list(self._compact_int_list(pd['tagged']))
+      else:
+        return None
 
-    for p in self.conf['remove_ports']:
-      del(self.conf['ports'][p])
+
+    for p in newconf['ports']:
+      pd = newconf['ports'][p]
+
+      if not pattern in p:
+        continue
+
+      if 'clean' in pd and pd['clean'] == True:
+        yield "default interface %s" % p
+        yield "interface %s" % p
+        yield " shutdown"
+        yield "!"
+        continue
+
+      yield "interface %s " % p
+      if 'descr' in pd and pd['descr']:
+        yield " description %s" % pd['descr']
+
+      if 'shutdown' in pd and pd['shutdown']:
+        yield " shutdown"
+      else:
+        " no shutdown"
+
+      if 'lag' in pd:
+        pcn = 'Port-channel%d' % pd['lag']
+        if pcn in newconf['ports']:
+          pd['type'] = newconf['ports'][pcn]['type']
+          pd['tagged'] = newconf['ports'][pcn]['tagged']
+          pd['untagged'] = newconf['ports'][pcn]['untagged']
+
+      if 'type' in pd:
+        if pd['type'] == 'access':
+          yield " switchport mode access"
+          yield " switchport access vlan %d" % pd['untagged']
+        elif pd['type'] == 'trunk':
+          yield " switchport mode trunk"
+ 
+          if 'untagged' in p:
+            yield " switchport access vlan %d" % pd['untagged']
+
+          tgt = _expand_tagged_vlans(newconf, p)
+          acttagged = _expand_tagged_vlans(activeconf, p)
+
+          if tgt:
+            if tgt != acttagged:
+              yield " no switchport trunk allowed vlan"
+              yield " switchport trunk allowed vlan %s" % ",".join([str(v) for v in tgt])
+          else:
+            yield " no switchport trunk allowed vlan"
+
+        elif pd['type'] == 'no switchport':
+          yield "no switchport"
+        else:
+          raise ValueError("Unknown port %s type: %s" % (p, pd['type']))
+      else:
+        raise ValueError("Missing port type for %s" % p)
+
+      if 'mtu' in pd:
+        yield " mtu %d" % (pd['mtu']+22) # OS10 means by MTU the total Ethernet frame size, not IP MTU, we add 22 (14 for EthII, 4 for dot1q and 4 for CRC)
+
+      if 'mlag' in pd:
+        yield " vlt-port-channel %s" % str(pd['mlag'])
+
+      if 'lag' in pd:
+        yield " channel-group %d mode %s" % (pd['lag'], (pd['lagmode'] if 'lagmode' in pd else "on"))
+
+      if 'extra' in pd:
+        for e in pd['extra']:
+          yield "%s" % e
+
+      yield "!"
+
+
+  def genSyncPortChannels(self, newconf, activeconf):
+    for p in newconf['ports']:
+      pd = newconf['ports'][p]
+      if 'clean' in pd and pd['clean'] and 'port-channel' in p:
+        yield "no interface %s" % p
+
+    for r in self.genSyncPhysPorts(newconf, activeconf, pattern="Port-channel"):
+      yield r
+
+
+  def genSyncAll(self, newconf):
+    logging.debug("Configuration read in progress for host %s ..." % self.hostname)
+    actcfgo = OS10Parser(self.getRunning().splitlines())
+    activeconf = actcfgo.getConfStruct()
+    logging.debug("Configuration parsed for host %s ." % self.hostname)
+    res = []
+    res += list(self.genSyncVLANS(newconf, activeconf))
+    res += list(self.genSyncPhysPorts(newconf, activeconf))
+    res += list(self.genSyncPortChannels(newconf, activeconf))
+    return res
 

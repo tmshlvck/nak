@@ -66,50 +66,16 @@ class BasicParser(object):
     raise Exception("Not implemented in abstract class")
 
 
+  def getConfStruct(self):
+    return self.cfg
+
+
   def genYAML(self):
     yaml.add_representer(OrderedDict, lambda self, data: yaml.representer.SafeRepresenter.represent_dict(self, data.items()))
-    return yaml.dump(self.cfg, sort_keys=False, explicit_start=True)
-
+    return yaml.dump(self.getConfStruct(), sort_keys=False, explicit_start=True)
 
 
 class BasicGen(object):
-  IGNORE_VLANS = [1,]
-  CFG_VLAN_RANGE = range(2,4095)
-
-  def __init__(self, configstruct, active_vlans=None):
-    self.conf = configstruct
-    if active_vlans:
-      self.active_vlans = active_vlans
-    else:
-      self.active_vlans = self.CFG_VLAN_RANGE
-
-
-  def _hooks(self):
-    self.conf['remove_vlans'] = sorted(list((set(self.active_vlans) - set(self.IGNORE_VLANS)) - set([int(v) for v in self.conf['vlans']])))
-    self._expand_port_tagged()
-
-
-  def genText(self):
-    self._hooks()
-    jenv = jinja2.Environment(loader=jinja2.PackageLoader('nak', 'templates'), autoescape=False)
-    t = jenv.get_template(self.TEMPLATE)
-    return t.render(config=self.conf)
-
-
-  def _expand_port_tagged(self):
-    for p in self.conf['ports']:
-      pd = self.conf['ports'][p]
-      if 'tagged' in pd:
-        if type(pd['tagged']) is str:
-          if (pd['tagged'].lower() == 'all' or pd['tagged'] == '*'):
-            if 'untagged' in pd:
-              pd['tagged'] = sorted(list(set(self.conf['vlans'].keys()) - {pd['untagged']}))
-            else:
-              pd['tagged'] = sorted(list(set(self.conf['vlans'].keys())))
-          else:
-            raise ValueError('Unsupported tagged value:' % pd['tagged'])
-
-
   @classmethod
   def _compact_int_list(cls, lst):
     try:
@@ -133,42 +99,14 @@ class BasicGen(object):
       yield s
     else:
       yield '%d-%d' % (s, l)
-    
-
-def get_gen_object(boxtype):
-  t = boxtype.strip().lower()
-  if t == 'iosold':
-    import nak.ios
-    return nak.ios.IOSOldGen
-  elif t == 'ios':
-    import nak.ios
-    return nak.ios.IOSGen
-  elif t == 'nxos':
-    import nak.ios
-    return nak.ios.NXOSGen
-  elif t == 'os10' or t == 'dellos10':
-    import nak.os10
-    return nak.os10.OS10Gen
-  else:
-    raise ValueError("Unknown box type: %s" % boxtype)
 
 
-def get_parser_object(boxtype):
-  t = boxtype.strip().lower()
-  if t == 'ios' or t == 'nxos':
-    import nak.ios
-    return nak.ios.IOSParser
-  elif t == 'procurve':
-    import nak.procurve
-    return nak.procurve.ProCurveParser
-  elif t == 'os10' or t == 'dellos10':
-    import nak.os10
-    return nak.os10.OS10Parser
-  elif t == 'ironware':
-    import nak.ironware
-    return nak.ironware.IronwareParser
-  else:
-    raise ValueError("Unknown box type: %s" % boxtype)
+  @classmethod
+  def _normalize_namestr(cls, s):
+    if " " in s:
+      return '"%s"' % s
+    else:
+      return s
 
 
 class Box(object):
@@ -176,6 +114,8 @@ class Box(object):
 
   def __init__(self, boxtype):
     self.boxtype = boxtype
+    self.hostname = 'Not connected'
+    self.conn = None
 
 
   def connect(self, host, user, passwd, enab=None):
@@ -213,6 +153,41 @@ class Box(object):
     logging.debug("Configure finished for %s (%s)", self.hostname, self.boxtype)
     return res
 
+
+def get_box_object(boxtype):
+  t = boxtype.strip().lower()
+  if t == 'iosold':
+    import nak.ios
+    return nak.ios.IOSOldBox
+  elif t == 'ios':
+    import nak.ios
+    return nak.ios.IOSBox
+  elif t == 'nxos':
+    import nak.ios
+    return nak.ios.NXOSBox
+  elif t == 'os10' or t == 'dellos10':
+    import nak.os10
+    return nak.os10.OS10Box
+  else:
+    raise ValueError("Unknown box type: %s" % boxtype)
+
+
+def get_parser_object(boxtype):
+  t = boxtype.strip().lower()
+  if t == 'ios' or t == 'nxos':
+    import nak.ios
+    return nak.ios.IOSParser
+  elif t == 'procurve':
+    import nak.procurve
+    return nak.procurve.ProCurveParser
+  elif t == 'os10' or t == 'dellos10':
+    import nak.os10
+    return nak.os10.OS10Parser
+  elif t == 'ironware':
+    import nak.ironware
+    return nak.ironware.IronwareParser
+  else:
+    raise ValueError("Unknown box type: %s" % boxtype)
 
 
 class Batch(object):
@@ -257,20 +232,24 @@ class Batch(object):
       ret = ""
       logging.debug("Working on %s" % h['inventory_hostname'])
 
-      go = get_gen_object(h['boxtype'])
-      textcfg = go(confstruct).genText()
+      bo = get_box_object(h['boxtype'])
+      po = get_parser_object(h['boxtype'])
 
-      b = Box(h['boxtype'])
+      b = bo()
       if 'ansible_become_password' in h:
         bcmpasswd = h['ansible_become_password']
       else:
         bcmpasswd = None
-      logging.debug("Config for %s generated, connecting..." % h['inventory_hostname'])
+      logging.debug("Connecting to %s ." % h['inventory_hostname'])
       b.connect(h['inventory_hostname'], h['ansible_user'], h['ansible_password'], bcmpasswd)
-      logging.debug("Connected to %s . Configuration in progress..." % h['inventory_hostname'])
+      logging.debug("Configuration from %s Downloaded..." % h['inventory_hostname'])
+      textcfg = '\n'.join(b.genSyncAll(confstruct))
+      logging.debug("Config for %s generated..." % h['inventory_hostname'])
       res = b.configure(textcfg, simulate=self.sim)
       if self.sim:
-        ret+=("Config diff for %s:\n" % h['inventory_hostname'])
+        ret+=("Config to execute for %s:\n" % h['inventory_hostname'])
+        ret+=str(textcfg)
+        ret+=("\nDiff from the box %s:\n" % h['inventory_hostname'])
         ret+=str(res)
         ret+="\n"
       logging.debug("Configuration of %s finished. Closing..." % h['inventory_hostname'])
