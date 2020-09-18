@@ -1,4 +1,24 @@
 #!/usr/bin/env python3
+# coding: utf-8
+
+"""
+nak
+
+Copyright (C) 2020 Tomas Hlavacek (tmshlvck@gmail.com)
+
+This module is a part of Network Automation Toolkit.
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version.
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along with
+this program. If not, see <http://www.gnu.org/licenses/>.
+"""
+
 
 import sys
 import ciscoconfparse
@@ -16,38 +36,62 @@ import nak.inventory
 
 
 
-# Data Model:
-# ---
-# hostname: bb.switch.ignum.cz
-# vlans:
-#   1:
-#     name: default
-#   10:
-#     name: VMs
-# ports:
-#   Ethernet1/1:
-#     descr: Customer Server 1 (eth0)
-#     type: trunk
-#     untagged: 1
-#     tagged: 1,10
-#     shutdown: true
-#   Ethernet1/2:
-#     descr: Customer Server 2 (eth0)
-#     type: access
-#     untagged: 1
-#     shutdown: false
-#   Ethernet1/2:
-#     descr: Customer Server 2 (eth0)
-#     type: access
-#     untagged: 1
-#     shutdown: false
-#   PortChannel1:
-#     descr: Customer Server 3
-#     type: trunk
-#     untagged: 1
-#     shutdown: false
-#     mlag: 1
+""" Data Model Example:
 
+---
+hostname: bb
+ports:
+  Port-channel1:
+    shutdown: false
+    type: trunk
+    descr: itchy+scratchy
+    untagged: 1
+    tagged: all
+  Port-channel4:
+    shutdown: false
+    type: trunk
+    descr: ce.switch.ignum.cz
+    untagged: 1
+    tagged: all
+  FastEthernet0:
+    clean: true
+  GigabitEthernet1/0/1:
+    clean: true
+  GigabitEthernet1/0/2:
+    shutdown: false
+    type: trunk
+    descr: ubi-b.switch.ignum.cz
+    untagged: 9
+    tagged:
+    - 143
+  GigabitEthernet1/0/3:
+    shutdown: false
+    type: trunk
+    descr: a0:E1/1/40
+    untagged: 1
+    tagged: all
+  GigabitEthernet1/0/4:
+    shutdown: true
+    type: access
+    descr: ubi-poe.switch.ignum.cz
+    untagged: 9
+  GigabitEthernet1/0/5:
+    clean: true
+...
+  GigabitEthernet1/0/26:
+    shutdown: false
+    type: trunk
+    descr: scratchy:e1/1/45:1
+    lag: 1
+    lagmode: active
+  GigabitEthernet1/0/27:
+    clean: true
+  GigabitEthernet1/0/28:
+    clean: true
+users:
+  th:
+  - privilege 15 secret 5 $1$xxX<cut>xXx
+"""
 
 
 
@@ -156,15 +200,12 @@ class Box(object):
 
 def get_box_object(boxtype):
   t = boxtype.strip().lower()
-  if t == 'iosold':
-    import nak.ios
-    return nak.ios.IOSOldBox
-  elif t == 'ios':
-    import nak.ios
-    return nak.ios.IOSBox
+  if t == 'ios':
+    import nak.cisco
+    return nak.cisco.IOSBox
   elif t == 'nxos':
-    import nak.ios
-    return nak.ios.NXOSBox
+    import nak.cisco
+    return nak.cisco.NXOSBox
   elif t == 'os10' or t == 'dellos10':
     import nak.os10
     return nak.os10.OS10Box
@@ -174,9 +215,12 @@ def get_box_object(boxtype):
 
 def get_parser_object(boxtype):
   t = boxtype.strip().lower()
-  if t == 'ios' or t == 'nxos':
-    import nak.ios
-    return nak.ios.IOSParser
+  if t == 'ios':
+    import nak.cisco
+    return nak.cisco.IOSParser
+  if t == 'nxos':
+    import nak.cisco
+    return nak.cisco.NXOSParser
   elif t == 'procurve':
     import nak.procurve
     return nak.procurve.ProCurveParser

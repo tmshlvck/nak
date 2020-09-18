@@ -1,4 +1,24 @@
 #!/usr/bin/env python3
+# coding: utf-8
+
+"""
+nak.os10
+
+Copyright (C) 2020 Tomas Hlavacek (tmshlvck@gmail.com)
+
+This module is a part of Network Automation Toolkit.
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version.
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along with
+this program. If not, see <http://www.gnu.org/licenses/>.
+"""
+
 
 import ciscoconfparse
 import re
@@ -6,11 +26,11 @@ from collections import OrderedDict,defaultdict
 import logging
 
 import nak
-import nak.ios
+import nak.cisco
 
 
 
-class OS10Parser(nak.ios.CiscoLikeParser):
+class OS10Parser(nak.cisco.CiscoLikeParser):
   def __init__(self, config):
     self.cfg = OrderedDict()
     self.parseConfig(config)
@@ -308,8 +328,10 @@ class OS10Box(nak.BasicGen,nak.Box):
     activeconf = actcfgo.getConfStruct()
     logging.debug("Configuration parsed for host %s ." % self.hostname)
     res = []
-    res += list(self.genSyncVLANS(newconf, activeconf))
-    res += list(self.genSyncPhysPorts(newconf, activeconf))
-    res += list(self.genSyncPortChannels(newconf, activeconf))
+    if 'vlans' in newconf:
+      res += list(self.genSyncVLANS(newconf, activeconf))
+    if 'ports' in newconf:
+      res += list(self.genSyncPhysPorts(newconf, activeconf))
+      res += list(self.genSyncPortChannels(newconf, activeconf))
     return res
 

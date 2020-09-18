@@ -1,4 +1,23 @@
 #!/usr/bin/env python3
+# coding: utf-8
+
+"""
+nak.cisco
+
+Copyright (C) 2020 Tomas Hlavacek (tmshlvck@gmail.com)
+
+This module is a part of Network Automation Toolkit.
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version.
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along with
+this program. If not, see <http://www.gnu.org/licenses/>.
+"""
 
 import ciscoconfparse
 import re
@@ -238,6 +257,11 @@ class IOSParser(CiscoLikeParser):
     return vlans
 
 
+  @classmethod
+  def _parse_bgp(cls, cp):
+    return None
+
+
   def parseConfig(self, conffile):
     cp = ciscoconfparse.CiscoConfParse(conffile)
 
@@ -251,6 +275,13 @@ class IOSParser(CiscoLikeParser):
     self.cfg['vlans'] = vlans
     self.cfg['ports'] = self._parse_ifaces(cp, vlans)
     self.cfg['users'] = self._parse_users(cp)
+    bgpr = self._parse_bgp(cp)
+    if bgpr:
+      self.cfg['bgp'] = bgpr
+
+
+class NXOSParser(IOSParser):
+  pass
 
 
 class IOSBox(nak.BasicGen,nak.Box):
@@ -384,15 +415,23 @@ class IOSBox(nak.BasicGen,nak.Box):
       yield r
 
 
+  def genSyncBGP(self, newconf, activeconf):
+    return []
+
+
   def genSyncAll(self, newconf):
     logging.debug("Configuration read in progress for host %s ..." % self.hostname)
     actcfgo = IOSParser(self.getRunning().splitlines())
     activeconf = actcfgo.getConfStruct()
     logging.debug("Configuration parsed for host %s ." % self.hostname)
     res = []
-    res += list(self.genSyncVLANS(newconf, activeconf))
-    res += list(self.genSyncPhysPorts(newconf, activeconf))
-    res += list(self.genSyncPortChannels(newconf, activeconf))
+    if 'vlans' in newconf:
+      res += list(self.genSyncVLANS(newconf, activeconf))
+    if 'ports' in newconf:
+      res += list(self.genSyncPhysPorts(newconf, activeconf))
+      res += list(self.genSyncPortChannels(newconf, activeconf))
+    if 'bgp' in newconf:
+      res += list(self.genSyncBGP(newconf, activeconf))
     return res
 
 
