@@ -1,0 +1,54 @@
+---
+all:
+  vars:
+    nak_commonconf: /var/lib/nak/vlans.yml
+    nak_confdir: /var/lib/nak/yconfig
+  children:
+    linux:
+      hosts:
+        greenlizard.taaa.eu:
+
+    junos:
+      hosts:
+        beast.taaa.eu:
+      vars:
+        ansible_user: "ansible"
+        ansible_password: "xxxxxxxxxxxxx"
+
+    ios:
+      hosts:
+        monster.taaa.eu:
+      vars:
+        ansible_user: "ansible"
+        ansible_password: "xxxxxxxxxxxxx"
+        ansible_become_password: "yyyyyyyyyyyy"
+
+    nxos:
+      hosts:
+        ugly.taaa.eu:
+      vars:
+        ansible_user: "ansible"
+        ansible_password: "aaaaaaaaaaaa"
+        ansible_become_password: "bbbbbbbbbbbbbb"
+
+    dellos10:
+      hosts:
+        repelling.taaa.eu:
+      vars:
+        ansible_user: "ansible"
+        ansible_password: "xxxxxxxxxxx"
+        ansible_become_password: "yyyyyyyyyyyy"
+
+
+    procurve:
+      hosts:
+        awful.taaa.eu:
+      vars:
+        ansible_user: "manager"
+        ansible_password: "xxxxxxxxxx"
+        ansible_become_password: "xxxxxxx"
+
+    management:
+      hosts:
+        personalmole.taaa.eu:
+
