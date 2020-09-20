@@ -412,7 +412,13 @@ class IOSBox(nak.BasicGen,nak.Box):
   def genSyncPortChannels(self, newconf, activeconf):
     for p in newconf['ports']:
       pd = newconf['ports'][p]
-      if 'clean' in pd and pd['clean'] and 'Port-channel' in p:
+
+      if pd and type(pd) is dict:
+        if 'clean' in pd and pd['clean'] and 'Port-channel' in p:
+          yield "no interface %s" % p
+
+    for p in activeconf['ports']:
+      if not p in newconf['ports'] and 'Port-channel' in p:
         yield "no interface %s" % p
 
     for r in self.genSyncPhysPorts(newconf, activeconf, pattern="Port-channel"):

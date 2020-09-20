@@ -267,7 +267,7 @@ class OS10Box(nak.BasicGen,nak.Box):
         " no shutdown"
 
       if 'lag' in pd:
-        pcn = 'Port-channel%d' % pd['lag']
+        pcn = 'port-channel%d' % pd['lag']
         if pcn in newconf['ports']:
           pd['type'] = newconf['ports'][pcn]['type']
           pd['tagged'] = newconf['ports'][pcn]['tagged']
@@ -319,11 +319,15 @@ class OS10Box(nak.BasicGen,nak.Box):
   def genSyncPortChannels(self, newconf, activeconf):
     for p in newconf['ports']:
       pd = newconf['ports'][p]
-      if 'clean' in pd and pd['clean'] and 'port-channel' in p:
+
+      if pd and type(pd) is dict:
+        if 'clean' in pd and pd['clean'] and 'port-channel' in p.lower():
+          yield "no interface %s" % p
+
+    for p in activeconf['ports']:
+      if not p in newconf['ports'] and 'port-channel' in p.lower():
         yield "no interface %s" % p
 
-    for r in self.genSyncPhysPorts(newconf, activeconf, pattern="Port-channel"):
-      yield r
 
 
   def genSyncAll(self, newconf):
