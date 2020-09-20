@@ -387,7 +387,7 @@ class IOSBox(nak.BasicGen,nak.Box):
         else:
           raise ValueError("Unknown port %s type: %s" % (p, pd['type']))
       else:
-        raise ValueError("Missing port type for %s" % p)
+        pass
 
       if 'mtu' in pd:
         yield " mtu %d" % pd['mtu']

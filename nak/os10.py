@@ -294,7 +294,7 @@ class OS10Box(nak.BasicGen,nak.Box):
         else:
           raise ValueError("Unknown port %s type: %s" % (p, pd['type']))
       else:
-        raise ValueError("Missing port type for %s" % p)
+        pass
 
       if 'mtu' in pd:
         yield " mtu %d" % (pd['mtu']+22) # OS10 means by MTU the total Ethernet frame size, not IP MTU, we add 22 (14 for EthII, 4 for dot1q and 4 for CRC)
