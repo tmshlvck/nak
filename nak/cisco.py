@@ -96,9 +96,6 @@ class IOSParser(CiscoLikeParser):
     if 'vpc-peer-link' in iface:
       return False
 
-    if 'no-switchport' in iface:
-      return False
-
     return True
   
 
@@ -154,7 +151,7 @@ class IOSParser(CiscoLikeParser):
 
         m = c.re_match_typed(r'^\s*(no\s+switchport)\s*$')
         if m:
-          ifaces[name]['no-switchport'] = True
+          ifaces[name]['type'] = 'no switchport'
 
         m = c.re_match_typed(r'^\s*channel-group\s+(.+)')
         if m:
@@ -200,9 +197,6 @@ class IOSParser(CiscoLikeParser):
       if 'lag' in i:
         i.pop('untagged', None)
         i.pop('tagged', None)
-
-      if 'no-switchport' in i:
-        to_remove.append(ifname)
 
       if not cls._iface_filter(ifname, i):
         to_remove.append(ifname)
@@ -387,7 +381,7 @@ class IOSBox(nak.BasicGen,nak.Box):
             yield " no switchport trunk allowed vlan"
 
         elif pd['type'] == 'no switchport':
-          yield "no switchport"
+          pass
         else:
           raise ValueError("Unknown port %s type: %s" % (p, pd['type']))
       else:

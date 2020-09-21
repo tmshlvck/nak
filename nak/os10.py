@@ -96,7 +96,6 @@ class OS10Parser(nak.cisco.CiscoLikeParser):
 
         m = c.re_match_typed(r'^\s*(no\s+switchport)\s*$')
         if m:
-          ifaces[name]['no-switchport'] = True
           ifaces[name]['type'] = 'no switchport'
 
         m = c.re_match_typed(r'^\s*channel-group\s+(.+)')
@@ -135,11 +134,6 @@ class OS10Parser(nak.cisco.CiscoLikeParser):
       if 'lag' in i:
         i.pop('untagged', None)
         i.pop('tagged', None)
-
-      if 'no-switchport' in i and not 'lag' in i: # remove L3 and MLAG discovery ports but not MLAG downlinks
-        to_remove.append(ifname)
-
-      i.pop('no-switchport', None)
 
       if not cls._iface_filter(ifname, i):
         to_remove.append(ifname)
@@ -294,7 +288,7 @@ class OS10Box(nak.BasicGen,nak.Box):
             yield " no switchport trunk allowed vlan"
 
         elif pd['type'] == 'no switchport':
-          yield "no switchport"
+          pass
         else:
           raise ValueError("Unknown port %s type: %s" % (p, pd['type']))
       else:
