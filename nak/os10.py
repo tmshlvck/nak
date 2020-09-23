@@ -260,13 +260,6 @@ class OS10Box(nak.BasicGen,nak.Box):
       else:
         " no shutdown"
 
-      if 'lag' in pd:
-        pcn = 'port-channel%d' % pd['lag']
-        if pcn in newconf['ports']:
-          pd['type'] = newconf['ports'][pcn]['type']
-          pd['tagged'] = newconf['ports'][pcn]['tagged']
-          pd['untagged'] = newconf['ports'][pcn]['untagged']
-
       if 'type' in pd:
         if pd['type'] == 'access':
           yield " switchport mode access"
