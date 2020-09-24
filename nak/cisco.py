@@ -23,6 +23,7 @@ import ciscoconfparse
 import re
 from collections import OrderedDict,defaultdict
 import logging
+import ipaddress
 
 import nak
 
@@ -77,6 +78,17 @@ class CiscoLikeParser(nak.BasicParser):
         users[username].append(m.group(2))
  
     return users
+
+  @classmethod
+  def _parse_address(cls, addr):
+    mi = re.match(r"^\s*([0-9\.]+) ([0-9\.]+)( secondary)?$", addr)
+    if mi:
+      return str(ipaddress.ip_interface('%s/%s' % (mi.group(1), mi.group(2))))
+    mi = re.match(r"^\s*([0-9a-fA-F:\.]+)/([0-9]+)( secondary)?$", addr)
+    if mi:
+      return str(ipaddress.ip_interface('%s/%s' % (mi.group(1), mi.group(2))))
+
+    return None
 
 
 class IOSParser(CiscoLikeParser):
@@ -152,6 +164,22 @@ class IOSParser(CiscoLikeParser):
         m = c.re_match_typed(r'^\s*(no\s+switchport)\s*$')
         if m:
           ifaces[name]['type'] = 'no switchport'
+
+        m = c.re_match_typed(r'^\s*ip address\s+(.+)')
+        if m:
+          ifaces[name]['type'] = 'no switchport'
+          a = cls._parse_address(m)
+          if not 'ip_addr' in ifaces[name]:
+            ifaces[name]['ip_addr'] = []
+          ifaces[name]['ip_addr'].append(a)
+
+        m = c.re_match_typed(r'^\s*ipv6 address\s+(.+)')
+        if m:
+          ifaces[name]['type'] = 'no switchport'
+          a = cls._parse_address(m)
+          if not 'ipv6_addr' in ifaces[name]:
+            ifaces[name]['ipv6_addr'] = []
+          ifaces[name]['ipv6_addr'].append(a)
 
         m = c.re_match_typed(r'^\s*channel-group\s+(.+)')
         if m:

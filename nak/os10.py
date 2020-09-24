@@ -98,6 +98,22 @@ class OS10Parser(nak.cisco.CiscoLikeParser):
         if m:
           ifaces[name]['type'] = 'no switchport'
 
+        m = c.re_match_typed(r'^\s*ip address\s+(.+)')
+        if m:
+          ifaces[name]['type'] = 'no switchport'
+          a = cls._parse_address(m)
+          if not 'ip_addr' in ifaces[name]:
+            ifaces[name]['ip_addr'] = []
+          ifaces[name]['ip_addr'].append(a)
+
+        m = c.re_match_typed(r'^\s*ipv6 address\s+(.+)')
+        if m:
+          ifaces[name]['type'] = 'no switchport'
+          a = cls._parse_address(m)
+          if not 'ipv6_addr' in ifaces[name]:
+            ifaces[name]['ipv6_addr'] = []
+          ifaces[name]['ipv6_addr'].append(a)
+
         m = c.re_match_typed(r'^\s*channel-group\s+(.+)')
         if m:
           mi = re.match(r'^\s*([0-9]+)\s+mode\s+(\S.+)$', m)
@@ -123,10 +139,15 @@ class OS10Parser(nak.cisco.CiscoLikeParser):
       i = ifaces[ifname]
       if not 'type' in i:
         i['type'] = 'access'
-      i['untagged'] = (i['access_vlan'] if 'access_vlan' in i else 1)
-      if 'allowed_vlan' in i:
-        utg = ({i['untagged']} if 'untagged' in i else set())
-        i['tagged'] = sorted(list(set(i['allowed_vlan']) - utg))
+        i['untagged'] = (i['access_vlan'] if 'access_vlan' in i else 1)
+
+      elif ifaces[ifname]['type'] == 'trunk':
+        if 'allowed_vlan' in i:
+          utg = ({i['untagged']} if 'untagged' in i else set())
+          i['tagged'] = sorted(list(set(i['allowed_vlan']) - utg))
+        i['untagged'] = (i['access_vlan'] if 'access_vlan' in i else 1)
+      elif ifaces[ifname]['type'] == 'access':
+        i['untagged'] = (i['access_vlan'] if 'access_vlan' in i else 1)
 
       i.pop('access_vlan', None)
       i.pop('allowed_vlan', None)
