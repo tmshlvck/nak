@@ -31,7 +31,8 @@ import nak.cisco
 
 
 class OS10Parser(nak.cisco.CiscoLikeParser):
-  def __init__(self, config):
+  def __init__(self, config, raw=False):
+    self.raw = raw
     self.cfg = OrderedDict()
     self.parseConfig(config)
 
@@ -48,7 +49,7 @@ class OS10Parser(nak.cisco.CiscoLikeParser):
   
 
   @classmethod
-  def _parse_ifaces(cls, cp, active_vlans):
+  def _parse_ifaces(cls, cp, active_vlans, raw):
     ifaces = OrderedDict()
 
     for o in cp.find_objects(r"^\s*interface"):
@@ -142,10 +143,13 @@ class OS10Parser(nak.cisco.CiscoLikeParser):
         i['untagged'] = (i['access_vlan'] if 'access_vlan' in i else 1)
 
       elif ifaces[ifname]['type'] == 'trunk':
-        if 'allowed_vlan' in i:
-          utg = ({i['untagged']} if 'untagged' in i else set())
-          i['tagged'] = sorted(list(set(i['allowed_vlan']) - utg))
         i['untagged'] = (i['access_vlan'] if 'access_vlan' in i else 1)
+
+        if 'allowed_vlan' in i:
+          i['tagged'] = sorted(list(set(i['allowed_vlan']) - {i['untagged'],}))
+          if (not raw) and (set(i['tagged']) | {i['untagged'],}) == set(active_vlans.keys()):
+            i['tagged'] = 'all'
+
       elif ifaces[ifname]['type'] == 'access':
         i['untagged'] = (i['access_vlan'] if 'access_vlan' in i else 1)
 
@@ -203,7 +207,7 @@ class OS10Parser(nak.cisco.CiscoLikeParser):
 
     vlans = self._parse_vlans(cp)
     self.cfg['vlans'] = vlans
-    self.cfg['ports'] = self._parse_ifaces(cp, vlans)
+    self.cfg['ports'] = self._parse_ifaces(cp, vlans, self.raw)
     self.cfg['users'] = self._parse_users(cp)
 
 
@@ -248,7 +252,7 @@ class OS10Box(nak.BasicGen,nak.Box):
             try:
               pd['tagged'] = list((set(pd['tagged']) - {pd['untagged'],}))
             except:
-              print('DEBUG: Exception in %s %s'%(str(p),str(pd)))
+              logging.error('Exception in %s %s'%(str(p),str(pd)))
               raise
           return list(self._compact_int_list(pd['tagged']))
       else:
