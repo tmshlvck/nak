@@ -377,7 +377,7 @@ class IOSBox(nak.BasicGen,nak.Box):
       if 'shutdown' in pd and pd['shutdown']:
         yield " shutdown"
       else:
-        " no shutdown"
+        yield " no shutdown"
 
       if 'lag' in pd:
         pcn = 'Port-channel%d' % pd['lag']

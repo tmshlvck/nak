@@ -266,7 +266,7 @@ class OS10Box(nak.BasicGen,nak.Box):
         continue
 
       if not type(pd) is dict:
-        logging.debug("Skipping port with not config %s", p)
+        logging.debug("Skipping port with invalid config %s", p)
         continue
 
       if 'clean' in pd and pd['clean'] == True:
@@ -283,7 +283,7 @@ class OS10Box(nak.BasicGen,nak.Box):
       if 'shutdown' in pd and pd['shutdown']:
         yield " shutdown"
       else:
-        " no shutdown"
+        yield " no shutdown"
 
       if 'type' in pd:
         if pd['type'] == 'access':
