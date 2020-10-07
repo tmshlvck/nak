@@ -98,6 +98,7 @@ class OS10Parser(nak.cisco.CiscoLikeParser):
         m = c.re_match_typed(r'^\s*(no\s+switchport)\s*$')
         if m:
           ifaces[name]['type'] = 'no switchport'
+          continue
 
         m = c.re_match_typed(r'^\s*ip address\s+(.+)')
         if m:
@@ -106,6 +107,7 @@ class OS10Parser(nak.cisco.CiscoLikeParser):
           if not 'ip_addr' in ifaces[name]:
             ifaces[name]['ip_addr'] = []
           ifaces[name]['ip_addr'].append(a)
+          continue
 
         m = c.re_match_typed(r'^\s*ipv6 address\s+(.+)')
         if m:
@@ -114,6 +116,7 @@ class OS10Parser(nak.cisco.CiscoLikeParser):
           if not 'ipv6_addr' in ifaces[name]:
             ifaces[name]['ipv6_addr'] = []
           ifaces[name]['ipv6_addr'].append(a)
+          continue
 
         m = c.re_match_typed(r'^\s*channel-group\s+(.+)')
         if m:
@@ -124,14 +127,23 @@ class OS10Parser(nak.cisco.CiscoLikeParser):
           else:
             ifaces[name]['lag'] = int(m)
             ifaces[name]['lagmode'] = 'on'
+          continue
  
         m = c.re_match_typed(r'^\s*vlt-port-channel\s+(.*)\s*$')
         if m:
           ifaces[name]['mlag'] = int(m)
+          continue
 
         m = c.re_match_typed(r'^\s*mtu\s+([0-9]+)\s*$')
         if m:
           ifaces[name]['mtu'] = int(m)-22 # OS10 has WEIRD MTU computation - they count the Eth header including 802.1Q tag and the CRC trailer, all sums up to 22 bytes more than what Cisco/others call MTUa (= L3 datagram size)
+          continue
+
+        if 'speed' in c.text or 'negotiation' in c.text or 'spanning-tree' in c.text:
+          if not 'extra' in ifaces[name]:
+            ifaces[name]['extra'] = []
+          ifaces[name]['extra'].append(c.text.strip())
+          continue
         
         logging.debug("Ignored: %s", c.text)
 
