@@ -151,6 +151,11 @@ class IOSParser(CiscoLikeParser):
           ifaces[name]['native_vlan'] = int(m)
           continue
 
+        m = c.re_match_typed(r"^\s*switchport trunk encapsulation\s+(.+)\s*$")
+        if m:
+          ifaces[name]['encap'] = m
+          continue
+
         m = c.re_match_typed(r"^\s*switchport trunk allowed vlan add\s+(.+)$")
         if m:
           ifaces[name]['allowed_vlan'] += cls._normalize_vlan_list(m)
