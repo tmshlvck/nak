@@ -212,9 +212,9 @@ class IOSParser(CiscoLikeParser):
         i['untagged'] = (i['access_vlan'] if 'access_vlan' in i else 1)
       elif i['type'] == 'trunk':
         i['untagged'] = (i['native_vlan'] if 'native_vlan' in i else 1) # TODO: Cisco can change native VLAN globally
-        if not 'allowed_vlan' in i:
-          i['allowed_vlan'] = active_vlans.keys()
-        if not i['tagged']:
+        if 'allowed_vlan' in i and i['allowed_vlan']:
+          i['tagged'] = sorted(list(set(i['allowed_vlan']) - {i['untagged']}))
+        else:
           i['tagged'] = 'all'
 
       i.pop('access_vlan', None)
