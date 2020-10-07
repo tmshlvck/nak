@@ -29,7 +29,6 @@ import jinja2
 import napalm
 import logging
 import multiprocessing.pool
-import traceback
 
 import nak.inventory
 
@@ -265,7 +264,7 @@ class Batch(object):
         self, h, cfs = args
         return self.runForHost(h, cfs)
       except Exception as e:
-        return 'Error for %s : %s' % (h['inventory_hostname'], "\n".join(traceback.format_list(traceback.extract_tb(sys.exc_info()[2]))))
+        return 'Error for %s :\n%s' % (h['inventory_hostname'], logging.traceback.format_exc())
     p = multiprocessing.pool.ThreadPool(self.MAX_THREADS)
     report = p.map(_runForHost, [(self, h, cfs) for h, cfs in self.inv.getHostsWithConfStruct(self.lim)])
     for r in report:
@@ -289,13 +288,18 @@ class Batch(object):
       logging.debug("Configuration from %s Downloaded..." % h['inventory_hostname'])
       textcfg = '\n'.join(b.genSyncAll(confstruct))
       logging.debug("Config for %s generated..." % h['inventory_hostname'])
-      res = b.configure(textcfg, simulate=self.sim)
-      if self.sim:
-        ret+=("Config to execute for %s:\n" % h['inventory_hostname'])
-        ret+=str(textcfg)
-        ret+=("\nDiff from the box %s:\n" % h['inventory_hostname'])
-        ret+=str(res)
-        ret+="\n"
+      if textcfg:
+        res = b.configure(textcfg, simulate=self.sim)
+        if self.sim:
+          ret+=("Config to execute for %s:\n" % h['inventory_hostname'])
+          ret+=str(textcfg)
+          ret+=("\nDiff from the box %s:\n" % h['inventory_hostname'])
+          ret+=str(res)
+          ret+="\n"
+      else:
+        logging.debug("No configuration/changes to execute.")
+        if sim:
+          ret+=("No changes/config to execute for %s:\n" % h['inventory_hostname'])
       logging.debug("Configuration of %s finished. Closing..." % h['inventory_hostname'])
       b.close()
       ret+="Configuration of %s finished.\n" % h['inventory_hostname']

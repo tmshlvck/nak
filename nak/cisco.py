@@ -281,7 +281,91 @@ class IOSParser(CiscoLikeParser):
 
   @classmethod
   def _parse_bgp(cls, cp):
-    return None
+    def setup_nb(nbip, nghbs):
+      if not nbip in nghbs:
+        nghbs[nbip] = OrderedDict()
+
+    def decrypt_type7(pw):
+      # Copyright (c) 2016 Richy Strnad
+      # MIT license - TODO: figure out licencing impact on the whole NAK
+      salt = 'dsfd;kfoA,.iyewrkldJKDHSUBsgvca69834ncxv9873254k;fg87'
+      # The first 2 digits represent the salt index salt[index]
+      index = int(pw[:2])
+      # The rest of the string is the encrypted password
+      enc_pw = pw[2:].rstrip()
+      # Split the pw string into the hex chars, each cleartext char is two hex chars
+      hex_pw = [enc_pw[i:i+2] for i in range(0, len(enc_pw), 2)]
+      # Create the cleartext list
+      cleartext = []
+      # Iterate over the hex list
+      for i in range(0, len(hex_pw)):
+        '''
+        The current salt index equals the starting index + current itteration
+        floored by % 53. This is to make sure that the salt index start at 0
+        again after it reached 53.
+        '''
+        cur_index = (i+index) % 53
+        # Get the current salt
+        cur_salt = ord(salt[cur_index])
+        # Get the current hex char as int
+        cur_hex_int = int(hex_pw[i], 16)
+        # XOR the 2 values (this is the decryption itself, XOR of the salt + encrypted char)
+        cleartext_char = cur_salt ^ cur_hex_int
+        # Get the char for the XOR'ed INT and append it to the cleartext List
+        cleartext.append(chr(cleartext_char))
+      return ''.join(cleartext)
+
+    def parse_neighbor(l, nghbs, afi):
+#      print("D:" + str(l))
+      m = re.match(r'^\s*neighbor\s+([a-fA-F0-9\.:]+)\s+remote-as\s+([0-9]+).*$', l.text)
+      if m:
+        nb = m.group(1)
+        setup_nb(nb, nghbs)
+        nghbs[nb]['remote-as'] = int(m.group(2))
+
+      m = re.match(r'^\s*neighbor\s+([a-fA-F0-9\.:]+)\s+description\s+(.+)$', l.text)
+      if m:
+        nb = m.group(1)
+        setup_nb(nb, nghbs)
+        nghbs[nb]['descr'] = m.group(2).strip()
+
+      m = re.match(r'^\s*neighbor\s+([a-fA-F0-9\.:]+)\s+peer-group\s+(.+)$', l.text)
+      if m:
+        nb = m.group(1)
+        setup_nb(nb, nghbs)
+        nghbs[nb]['peer-group'] = m.group(2).strip()
+
+      m = re.match(r'^\s*neighbor\s+([a-fA-F0-9\.:]+)\s+password\s+7\s+(.+)$', l.text)
+      if m:
+        nb = m.group(1)
+        setup_nb(nb, nghbs)
+        nghbs[nb]['password'] = decrypt_type7(m.group(2).strip())
+
+      m = re.match(r'^\s*neighbor\s+([a-fA-F0-9\.:]+)\s+activate\s*$', l.text)
+      if m:
+        nb = m.group(1)
+        setup_nb(nb, nghbs)
+        if not 'afi' in nghbs[nb]:
+          nghbs[nb]['afi'] = []
+        nghbs[nb]['afi'].append((af if af else 'ipv4'))
+         
+
+    bgp = OrderedDict()
+    for o in cp.find_objects(r'^\s*router\s+bgp\s+([0-9]+)'):
+      local_asn = int(o.re_match_typed(r'^\s*router\s+bgp\s+([0-9]+)').strip())
+      bgp[local_asn] = OrderedDict()
+      for c in o.children:
+        if c.re_match_typed(r'^\s*neighbor\s+([a-fA-F0-9\.:]+)\s+.*'):
+          parse_neighbor(c, bgp[local_asn], None)
+          continue
+
+        af = c.re_match_typed(r'^\s*address-family\s+(.+)$')
+        if af:
+          for afc in c.children:
+            if afc.re_match_typed(r'^\s*neighbor\s+([a-fA-F0-9\.:]+)\s+.*'):
+              parse_neighbor(afc, bgp[local_asn], af)
+
+    return bgp
 
 
   def parseConfig(self, conffile):
@@ -447,8 +531,39 @@ class IOSBox(nak.BasicGen,nak.Box):
       yield r
 
 
-  def genSyncBGP(self, newconf, activeconf):
-    return []
+  def genSyncBGP(self, newconf, activeconf, regen=False):
+    res = []
+    change = False
+
+    for localas in newconf['bgp']:
+      if not localas in activeconf['bgp']:
+        change = True
+      rtr = newconf['bgp'][localas]
+      res.append("router bgp %d" % localas)
+
+      for nbip in rtr:
+        if not nbip in activeconf['bgp'][localas] or rtr[nbip] != activeconf['bgp'][localas][nbip]:
+          change = True
+          for afi in rtr[nbip]['afi']:
+            res.append('address-family %s' % afi)
+            res.append('neighbor %s remote-as %d' % (nbip, rtr[nbip]['remote-as']))
+            if 'peer-group' in rtr[nbip]:
+              res.append('neighbor %s peer-group %s' % (nbip, rtr[nbip]['peer-group']))
+            if 'descr' in rtr[nbip]:
+              res.append('neighbor %s description %s' % (nbip, rtr[nbip]['descr']))
+            if 'password' in rtr[nbip]:
+              res.append('neighbor %s password %s' % (nbip, rtr[nbip]['password']))
+            res.append('!')
+
+      for nbip in activeconf['bgp'][localas]:
+        if not nbip in rtr:
+          change = True
+          res.append('no neigrbor %s' % nbip)
+
+    if change or regen:
+      return res
+    else:
+      return []
 
 
   def genSyncAll(self, newconf):

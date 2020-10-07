@@ -341,6 +341,43 @@ class OS10Box(nak.BasicGen,nak.Box):
         yield "no interface %s" % p
 
 
+  def genSyncBGP(self, newconf, activeconf, regen=False):
+    res = []
+    change = False
+
+    for localas in newconf['bgp']:
+      if not localas in activeconf['bgp']:
+        change = True
+      rtr = newconf['bgp'][localas]
+      res.append("router bgp %d" % localas)
+
+      for nbip in rtr:
+        if not nbip in activeconf['bgp'][localas] or rtr[nbip] != activeconf['bgp'][localas][nbip]:
+          change = True
+          for afi in rtr[nbip]['afi']:
+            res.append('neighbor %s' % nbip)
+            res.append('remote-as %d' % rtr[nbip]['remote-as'])
+            res.append('address-family %s unicast' % afi)
+            res.append('activate')
+            if 'peer-group' in rtr[nbip]:
+              res.append('neighbor %s inherit template %s' % (nbip, rtr[nbip]['peer-group']))
+            if 'descr' in rtr[nbip]:
+              res.append('neighbor %s description %s' % (nbip, rtr[nbip]['descr']))
+            if 'password' in rtr[nbip]:
+              res.append('neighbor %s password %s' % (nbip, rtr[nbip]['password']))
+            res.append('no shutdown')
+            res.append('!')
+
+      for nbip in activeconf['bgp'][localas]:
+        if not nbip in rtr:
+          change = True
+          res.append('no neigrbor %s' % nbip)
+
+    if change or regen:
+      return res
+    else:
+      return []
+
 
   def genSyncAll(self, newconf):
     logging.debug("Configuration read in progress for host %s ..." % self.hostname)
@@ -353,5 +390,7 @@ class OS10Box(nak.BasicGen,nak.Box):
     if 'ports' in newconf:
       res += list(self.genSyncPhysPorts(newconf, activeconf))
       res += list(self.genSyncPortChannels(newconf, activeconf))
+    if 'bgp' in newconf:
+      res += list(self.genSyncBGP(newconf, activeconf))
     return res
 
