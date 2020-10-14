@@ -358,8 +358,13 @@ class OS10Box(nak.BasicGen,nak.Box):
     change = False
 
     for localas in newconf['bgp']:
+      if not 'bgp' in activeconf:
+        change = True
+        activeconf['bgp'] = {}
       if not localas in activeconf['bgp']:
         change = True
+        activeconf['bgp'][localas] = {}
+
       rtr = newconf['bgp'][localas]
       res.append("router bgp %d" % localas)
 
