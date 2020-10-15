@@ -352,6 +352,9 @@ class OS10Box(nak.BasicGen,nak.Box):
       if not p in newconf['ports'] and 'port-channel' in p.lower():
         yield "no interface %s" % p
 
+    for l in self.genSyncPhysPorts(newconf, activeconf, pattern="port-channel"):
+      yield l
+
 
   def genSyncBGP(self, newconf, activeconf, regen=False):
     res = []
@@ -374,17 +377,19 @@ class OS10Box(nak.BasicGen,nak.Box):
           for afi in rtr[nbip]['afi']:
             res.append('neighbor %s' % nbip)
             res.append('remote-as %d' % rtr[nbip]['remote-as'])
+            if 'peer-group' in rtr[nbip]:
+              res.append('inherit template %s' % rtr[nbip]['peer-group'])
+            if 'descr' in rtr[nbip]:
+              res.append('description "%s"' % rtr[nbip]['descr'])
+            if 'password' in rtr[nbip]:
+              res.append('password %s' % rtr[nbip]['password'])
+
             res.append('address-family %s unicast' % afi)
             res.append('activate')
-            if 'peer-group' in rtr[nbip]:
-              res.append('neighbor %s inherit template %s' % (nbip, rtr[nbip]['peer-group']))
-            if 'descr' in rtr[nbip]:
-              res.append('neighbor %s description %s' % (nbip, rtr[nbip]['descr']))
-            if 'password' in rtr[nbip]:
-              res.append('neighbor %s password %s' % (nbip, rtr[nbip]['password']))
-            res.append('no shutdown')
             res.append('!')
 
+            res.append('no shutdown')
+            res.append('!')
       for nbip in activeconf['bgp'][localas]:
         if not nbip in rtr:
           change = True
@@ -405,8 +410,8 @@ class OS10Box(nak.BasicGen,nak.Box):
     if 'vlans' in newconf:
       res += list(self.genSyncVLANS(newconf, activeconf))
     if 'ports' in newconf:
-      res += list(self.genSyncPhysPorts(newconf, activeconf))
       res += list(self.genSyncPortChannels(newconf, activeconf))
+      res += list(self.genSyncPhysPorts(newconf, activeconf))
     if 'bgp' in newconf:
       res += list(self.genSyncBGP(newconf, activeconf))
     return res
