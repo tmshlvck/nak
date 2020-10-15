@@ -83,6 +83,8 @@ class AnsibleInventory(object):
       return 'ironware'
     elif 'junos' in group_names:
       return 'junos'
+    elif 'linux' in group_names:
+      return 'linux'
     else:
       raise Exception('Can not derive type from: %s' % str(group_names))
 

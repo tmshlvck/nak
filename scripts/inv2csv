@@ -39,7 +39,16 @@ def main(lim, invs, vault_pass, delim):
   hosts = i.getHosts(lim)
 
   for h in hosts:
-    print(delim.join([h['inventory_hostname'], h['boxtype'], h['ansible_user'], h['ansible_password']]))
+    l = [h['inventory_hostname'], h['boxtype']]
+    if 'ansible_user' in h and h['ansible_user']:
+      l.append(h['ansible_user'])
+    else:
+      l.append('')
+    if 'ansible_password' in h and h['ansible_password']:
+      l.append(h['ansible_password'])
+    else:
+      l.append('')
+    print(delim.join(l))
 
   return 0
 
