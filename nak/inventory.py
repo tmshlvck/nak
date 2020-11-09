@@ -53,7 +53,7 @@ class AnsibleInventory(object):
     """
 
     def filter_vars(hostvars):
-      accept_vars = ['ansible_user', 'ansible_password', 'ansible_become_password', 'inventory_hostname', 'inventory_hostname_short', 'group_names', 'nak_confdir', 'nak_commonconf']
+      accept_vars = ['ansible_user', 'ansible_password', 'ansible_become_password', 'inventory_hostname', 'inventory_hostname_short', 'group_names', 'nak_confdir']
       return {k:(hostvars[k] if k in hostvars else None) for k in accept_vars}
 
     hosts = self.variable_manager.get_vars()['groups']['all']
@@ -131,11 +131,6 @@ class AnsibleInventoryConfigs(AnsibleInventory):
         logging.debug('Skipping unsupported host %s', h['inventory_hostname'])
         continue
 
-      if 'nak_commonconf' in h and h['nak_commonconf']:
-        ccp = h['nak_commonconf']
-      else:
-        ccp = None
-
       confdir = ''
 
       if 'nak_confdir' in h and h['nak_confdir']:
@@ -144,22 +139,28 @@ class AnsibleInventoryConfigs(AnsibleInventory):
       if not os.path.exists(hcp):
         hcp = os.path.join(confdir, '%s.yml' % h['inventory_hostname'])
 
-      yield (h, ccp, hcp) # (dict hostdef, str commonConfPath, hostConfPath)
+      yield (h, hcp) # (dict hostdef, hostConfPath)
+
+
+  def loadConfStructRecursive(self, cfgfilename):
+    with open(ccp, 'r') as fh:
+      cc = yaml.load(fh, Loader=yaml.Loader)
+
+      inhcfg = {}
+      if 'inherit' in cc and cc['inherit']:
+        for i in cc['inherit']:
+          ic = self.loadConfStructRecursive(i)
+          inhcfg = self.mergeConfigs([inhcfg, ic])
+
+      return self.mergeConfigs([inhcfg, cc])
+
 
 
   def getHostsWithConfStruct(self, limit=None):
-    for h,ccp,hcp in self.getHostsWithConfPaths(limit):
-      cc = {}
-      if ccp:
-        with open(ccp, 'r') as fh:
-          cc = yaml.load(fh, Loader=yaml.Loader)
-
-      with open(hcp, 'r') as fh:
-        hc = yaml.load(fh, Loader=yaml.Loader)
-
+    for h,hcp in self.getHostsWithConfPaths(limit):
       if not hc:
         raise Exception("Missing config file %s for host %s", hcp, str(h))
 
-      yield (h, self.mergeConfigs([cc, hc]))
+      yield (h, self.loadConfStructRecursive(hc))
 
 

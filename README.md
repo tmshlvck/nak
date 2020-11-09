@@ -58,7 +58,6 @@ Please note extra variables in the inventory:
 ```
 all:
   vars:
-    nak_commonconf: /var/lib/nak/vlans.yml
     nak_confdir: /var/lib/nak/yconfig
 ```
 
@@ -70,7 +69,7 @@ To simulate configuration write and then to really write & commit the supported 
 configuration you can run:
 
 ```
-nak -s -l monter
+nak -s -l monster
 ```
 
 which means "simulate" (`-s`) configuration and limit (`-l`) for host `monster`. NAK connects
