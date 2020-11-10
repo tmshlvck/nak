@@ -169,6 +169,7 @@ class IOSParser(CiscoLikeParser):
         m = c.re_match_typed(r'^\s*(no\s+switchport)\s*$')
         if m:
           ifaces[name]['type'] = 'no switchport'
+          continue
 
         m = c.re_match_typed(r'^\s*ip address\s+(.+)')
         if m:
@@ -177,6 +178,7 @@ class IOSParser(CiscoLikeParser):
           if not 'ip_addr' in ifaces[name]:
             ifaces[name]['ip_addr'] = []
           ifaces[name]['ip_addr'].append(a)
+          continue
 
         m = c.re_match_typed(r'^\s*ipv6 address\s+(.+)')
         if m:
@@ -185,6 +187,7 @@ class IOSParser(CiscoLikeParser):
           if not 'ipv6_addr' in ifaces[name]:
             ifaces[name]['ipv6_addr'] = []
           ifaces[name]['ipv6_addr'].append(a)
+          continue
 
         m = c.re_match_typed(r'^\s*channel-group\s+(.+)')
         if m:
@@ -195,19 +198,25 @@ class IOSParser(CiscoLikeParser):
           else:
             ifaces[name]['lag'] = int(m)
             ifaces[name]['lagmode'] = 'on'
+          continue
  
+        # Nexus specific: TODO move to NXOS object
         m = c.re_match_typed(r'^\s*vpc\s+(.*)\s*$')
         if m:
           if m.strip() == 'peer-link':
             ifaces[name]['vpc-peer-link'] = True
           else:
             ifaces[name]['mlag'] = int(m)
+          continue
         
         m = c.re_match_typed(r'^\s*mtu\s+([0-9]+)\s*$')
         if m:
           ifaces[name]['mtu'] = int(m)
+          continue
  
-        logging.debug("Ignored: %s", c.text)
+        if not 'extra' in ifaces[name]:
+          ifaces[name]['extra'] = []
+        ifaces[name]['extra'].append(c.text.strip())
 
     to_remove = []
     for ifname in ifaces:

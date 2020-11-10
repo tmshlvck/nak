@@ -144,8 +144,10 @@ class OS10Parser(nak.cisco.CiscoLikeParser):
             ifaces[name]['extra'] = []
           ifaces[name]['extra'].append(c.text.strip())
           continue
-        
-        logging.debug("Ignored: %s", c.text)
+
+        if not 'extra' in ifaces[name]:
+          ifaces[name]['extra'] = []
+        ifaces[name]['extra'].append(c.text.strip())
 
     to_remove = []
     for ifname in ifaces:
