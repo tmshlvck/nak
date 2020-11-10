@@ -109,7 +109,116 @@ class IOSParser(CiscoLikeParser):
       return False
 
     return True
-  
+
+
+  @classmethod
+  def _parse_if_line(cls, c, iface):
+    """c = CiscConfParse children object (=line)
+    iface = OrderedDict resulting structure
+    """
+
+    m = c.re_match_typed(r"^\s*description\s+(.+)$").strip()
+    if m:
+      iface['descr'] = m
+      return
+
+    m = c.re_match_typed(r"^\s*(shutdown)\s*$")
+    if m:
+      iface['shutdown'] = True
+      return
+
+    m = c.re_match_typed(r"^\s*switchport mode\s+(.+)$")
+    if m:
+      iface['type'] = m
+      return
+
+    m = c.re_match_typed(r"^\s*switchport access vlan\s+([0-9]+)\s*$")
+    if m:
+      iface['access_vlan'] = int(m)
+      return
+
+    m = c.re_match_typed(r"^\s*switchport trunk native vlan\s+([0-9]+)\s*$")
+    if m:
+      iface['native_vlan'] = int(m)
+      return
+
+    m = c.re_match_typed(r"^\s*switchport trunk encapsulation\s+(.+)\s*$")
+    if m:
+      iface['encap'] = m
+      return
+
+    m = c.re_match_typed(r"^\s*switchport trunk allowed vlan add\s+(.+)$")
+    if m:
+      iface['allowed_vlan'] += cls._normalize_vlan_list(m)
+      return
+
+    m = c.re_match_typed(r"^\s*switchport trunk allowed vlan\s+(.+)$")
+    if m:
+      iface['allowed_vlan'] = cls._normalize_vlan_list(m)
+      return
+
+    m = c.re_match_typed(r'^\s*(no\s+switchport)\s*$')
+    if m:
+      iface['type'] = 'no switchport'
+      return
+
+    m = c.re_match_typed(r'^\s*ip address\s+(.+)')
+    if m:
+      iface['type'] = 'no switchport'
+      a = cls._parse_address(m)
+      if not 'ip_addr' in iface:
+        iface['ip_addr'] = []
+      iface['ip_addr'].append(a)
+      return
+
+    m = c.re_match_typed(r'^\s*ipv6 address\s+(.+)')
+    if m:
+      iface['type'] = 'no switchport'
+      a = cls._parse_address(m)
+      if not 'ipv6_addr' in iface:
+        iface['ipv6_addr'] = []
+      iface['ipv6_addr'].append(a)
+      return
+
+    m = c.re_match_typed(r'^\s*channel-group\s+(.+)')
+    if m:
+      mi = re.match(r'^\s*([0-9]+)\s+mode\s+(\S.+)$', m)
+      if mi:
+        iface['lag'] = int(mi.group(1))
+        iface['lagmode'] = mi.group(2).strip()
+      else:
+        iface['lag'] = int(m)
+        iface['lagmode'] = 'on'
+      return
+
+    # Nexus specific: TODO move to NXOS object
+    m = c.re_match_typed(r'^\s*vpc\s+(.*)\s*$')
+    if m:
+      if m.strip() == 'peer-link':
+        iface['vpc-peer-link'] = True
+      else:
+        iface['mlag'] = int(m)
+      return
+       
+    m = c.re_match_typed(r'^\s*mtu\s+([0-9]+)\s*$')
+    if m:
+      iface['mtu'] = int(m)
+      return
+
+    if not 'extra' in ifaces[name]:
+      iface['extra'] = []
+    iface['extra'].append(c.text.strip())
+
+
+  @classmethod
+  def _parse_if(cls, o, iface):
+    """o = CiscConfParse object
+    iface = OrderedDict resulting structure
+    """
+
+    for c in o.children:
+      cls._parse_if_line(c, iface)
+
 
   @classmethod
   def _parse_ifaces(cls, cp, active_vlans):
@@ -125,99 +234,9 @@ class IOSParser(CiscoLikeParser):
         ifaces[name]['shutdown'] = False
         ifaces[name]['type'] = 'access'
 
-      for c in o.children:
-        m = c.re_match_typed(r"^\s*description\s+(.+)$").strip()
-        if m:
-          ifaces[name]['descr'] = m
-          continue
+      cls._parse_if(o, ifaces[name])
 
-        m = c.re_match_typed(r"^\s*(shutdown)\s*$")
-        if m:
-          ifaces[name]['shutdown'] = True
-          continue
-
-        m = c.re_match_typed(r"^\s*switchport mode\s+(.+)$")
-        if m:
-          ifaces[name]['type'] = m
-          continue
-
-        m = c.re_match_typed(r"^\s*switchport access vlan\s+([0-9]+)\s*$")
-        if m:
-          ifaces[name]['access_vlan'] = int(m)
-          continue
-
-        m = c.re_match_typed(r"^\s*switchport trunk native vlan\s+([0-9]+)\s*$")
-        if m:
-          ifaces[name]['native_vlan'] = int(m)
-          continue
-
-        m = c.re_match_typed(r"^\s*switchport trunk encapsulation\s+(.+)\s*$")
-        if m:
-          ifaces[name]['encap'] = m
-          continue
-
-        m = c.re_match_typed(r"^\s*switchport trunk allowed vlan add\s+(.+)$")
-        if m:
-          ifaces[name]['allowed_vlan'] += cls._normalize_vlan_list(m)
-          continue
-
-        m = c.re_match_typed(r"^\s*switchport trunk allowed vlan\s+(.+)$")
-        if m:
-          ifaces[name]['allowed_vlan'] = cls._normalize_vlan_list(m)
-          continue
-
-        m = c.re_match_typed(r'^\s*(no\s+switchport)\s*$')
-        if m:
-          ifaces[name]['type'] = 'no switchport'
-          continue
-
-        m = c.re_match_typed(r'^\s*ip address\s+(.+)')
-        if m:
-          ifaces[name]['type'] = 'no switchport'
-          a = cls._parse_address(m)
-          if not 'ip_addr' in ifaces[name]:
-            ifaces[name]['ip_addr'] = []
-          ifaces[name]['ip_addr'].append(a)
-          continue
-
-        m = c.re_match_typed(r'^\s*ipv6 address\s+(.+)')
-        if m:
-          ifaces[name]['type'] = 'no switchport'
-          a = cls._parse_address(m)
-          if not 'ipv6_addr' in ifaces[name]:
-            ifaces[name]['ipv6_addr'] = []
-          ifaces[name]['ipv6_addr'].append(a)
-          continue
-
-        m = c.re_match_typed(r'^\s*channel-group\s+(.+)')
-        if m:
-          mi = re.match(r'^\s*([0-9]+)\s+mode\s+(\S.+)$', m)
-          if mi:
-            ifaces[name]['lag'] = int(mi.group(1))
-            ifaces[name]['lagmode'] = mi.group(2).strip()
-          else:
-            ifaces[name]['lag'] = int(m)
-            ifaces[name]['lagmode'] = 'on'
-          continue
- 
-        # Nexus specific: TODO move to NXOS object
-        m = c.re_match_typed(r'^\s*vpc\s+(.*)\s*$')
-        if m:
-          if m.strip() == 'peer-link':
-            ifaces[name]['vpc-peer-link'] = True
-          else:
-            ifaces[name]['mlag'] = int(m)
-          continue
-        
-        m = c.re_match_typed(r'^\s*mtu\s+([0-9]+)\s*$')
-        if m:
-          ifaces[name]['mtu'] = int(m)
-          continue
- 
-        if not 'extra' in ifaces[name]:
-          ifaces[name]['extra'] = []
-        ifaces[name]['extra'].append(c.text.strip())
-
+    # General cleanup
     to_remove = []
     for ifname in ifaces:
       i = ifaces[ifname]
@@ -400,7 +419,21 @@ class IOSParser(CiscoLikeParser):
 
 
 class NXOSParser(IOSParser):
-  pass
+  @classmethod
+  def _parse_if_line(cls, c, iface):
+    """c = CiscConfParse children object (=line)
+    iface = OrderedDict resulting structure
+    """
+
+    m = c.re_match_typed(r'^\s*vpc\s+(.*)\s*$')
+    if m:
+      if m.strip() == 'peer-link':
+        iface['vpc-peer-link'] = True
+      else:
+        iface['mlag'] = int(m)
+      return
+
+    IOSParser._parse_if_line(c, iface)
 
 
 class IOSBox(nak.BasicGen,nak.Box):
