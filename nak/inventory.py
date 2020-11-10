@@ -110,11 +110,14 @@ class AnsibleInventoryConfigs(AnsibleInventory):
     """
       cfgs = [cfg1, cfg2, ...]
     """
-    res = OrderedDict()
-    for c in cfgs:
-      for k in c:
-        res[k] = c[k]
-    return res
+    if len(cfgs) == 1:
+      return cfgs[0]
+    else:
+      res = OrderedDict()
+      for c in cfgs:
+        for k in c:
+          res[k] = c[k]
+      return res
 
 
   @classmethod
