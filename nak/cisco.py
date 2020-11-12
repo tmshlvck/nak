@@ -456,33 +456,90 @@ class IOSBox(nak.BasicGen,nak.Box):
         yield '!'
 
 
-  def genSyncPhysPorts(self, newconf, activeconf, pattern="Ethernet"):
-    def _expand_tagged_vlans(conf, p):
-      if not p in conf['ports']:
+  @classmethod
+  def _expand_tagged_vlans(cls, conf, p):
+    if not p in conf['ports']:
+      return None
+
+    pd = conf['ports'][p]
+    if 'tagged' in pd:
+      if not pd['tagged']:
         return None
 
-      pd = conf['ports'][p]
-      if 'tagged' in pd:
-        if not pd['tagged']:
-          return None
-
-        if type(pd['tagged']) is str:
-          if (pd['tagged'].lower() == 'all' or pd['tagged'] == '*'):
-              return None
-          else:
-            raise ValueError('Unsupported tagged value:' % tgt)
+      if type(pd['tagged']) is str:
+        if (pd['tagged'].lower() == 'all' or pd['tagged'] == '*'):
+            return None
         else:
-          if 'untagged' in pd:
-            try:
-              pd['tagged'] = list((set(pd['tagged']) | {pd['untagged'],}))
-            except:
-              print('DEBUG: Exception in %s %s'%(str(p),str(pd)))
-              raise
-          return list(self._compact_int_list(pd['tagged']))
+          raise ValueError('Unsupported tagged value:' % tgt)
       else:
-        return None
+        if 'untagged' in pd:
+          try:
+            pd['tagged'] = list((set(pd['tagged']) | {pd['untagged'],}))
+          except:
+            print('DEBUG: Exception in %s %s'%(str(p),str(pd)))
+            raise
+        return list(self._compact_int_list(pd['tagged']))
+    else:
+      return None
 
 
+  def _genPhysPortConfig(self, pd, newconf, activeconf):
+    if 'descr' in pd and pd['descr']:
+      yield " description %s" % pd['descr']
+
+    if 'shutdown' in pd and pd['shutdown']:
+      yield " shutdown"
+    else:
+      yield " no shutdown"
+
+    if 'lag' in pd:
+      pcn = 'Port-channel%d' % pd['lag']
+      if pcn in newconf['ports']:
+        pd['type'] = newconf['ports'][pcn]['type']
+        pd['tagged'] = newconf['ports'][pcn]['tagged']
+        pd['untagged'] = newconf['ports'][pcn]['untagged']
+
+    if 'type' in pd:
+      if pd['type'] == 'access':
+        yield " switchport mode access"
+        yield " switchport access vlan %d" % pd['untagged']
+      elif pd['type'] == 'trunk':
+        if 'encap' in pd and pd['encap']:
+          yield " switchport trunk encapsulation %s" % pd['encap']
+        yield " switchport mode trunk"
+ 
+        if 'untagged' in p:
+          yield " switchport trunk native vlan %d" % pd['untagged']
+
+        tgt = self._expand_tagged_vlans(newconf, p)
+        acttagged = self._expand_tagged_vlans(activeconf, p)
+
+        if tgt:
+          if tgt != acttagged:
+            yield " no switchport trunk allowed vlan"
+            yield " switchport trunk allowed vlan %s" % ",".join([str(v) for v in tgt])
+        else:
+          yield " no switchport trunk allowed vlan"
+
+      elif pd['type'] == 'no switchport':
+        pass
+      else:
+        raise ValueError("Unknown port %s type: %s" % (p, pd['type']))
+    else:
+      pass
+
+    if 'mtu' in pd:
+      yield " mtu %d" % pd['mtu']
+
+    if 'lag' in pd:
+      yield " channel-group %d mode %s" % (pd['lag'], (pd['lagmode'] if 'lagmode' in pd else "on"))
+
+    if 'extra' in pd:
+      for e in pd['extra']:
+        yield " %s" % e
+
+
+  def genSyncPhysPorts(self, newconf, activeconf, pattern="Ethernet"):
     for p in newconf['ports']:
       pd = newconf['ports'][p]
 
@@ -501,63 +558,7 @@ class IOSBox(nak.BasicGen,nak.Box):
         continue
 
       yield "interface %s " % p
-      if 'descr' in pd and pd['descr']:
-        yield " description %s" % pd['descr']
-
-      if 'shutdown' in pd and pd['shutdown']:
-        yield " shutdown"
-      else:
-        yield " no shutdown"
-
-      if 'lag' in pd:
-        pcn = 'Port-channel%d' % pd['lag']
-        if pcn in newconf['ports']:
-          pd['type'] = newconf['ports'][pcn]['type']
-          pd['tagged'] = newconf['ports'][pcn]['tagged']
-          pd['untagged'] = newconf['ports'][pcn]['untagged']
-
-      if 'type' in pd:
-        if pd['type'] == 'access':
-          yield " switchport mode access"
-          yield " switchport access vlan %d" % pd['untagged']
-        elif pd['type'] == 'trunk':
-          if 'encap' in pd and pd['encap']:
-            yield " switchport trunk encapsulation %s" % pd['encap']
-          yield " switchport mode trunk"
- 
-          if 'untagged' in p:
-            yield " switchport trunk native vlan %d" % pd['untagged']
-
-          tgt = _expand_tagged_vlans(newconf, p)
-          acttagged = _expand_tagged_vlans(activeconf, p)
-
-          if tgt:
-            if tgt != acttagged:
-              yield " no switchport trunk allowed vlan"
-              yield " switchport trunk allowed vlan %s" % ",".join([str(v) for v in tgt])
-          else:
-            yield " no switchport trunk allowed vlan"
-
-        elif pd['type'] == 'no switchport':
-          pass
-        else:
-          raise ValueError("Unknown port %s type: %s" % (p, pd['type']))
-      else:
-        pass
-
-      if 'mtu' in pd:
-        yield " mtu %d" % pd['mtu']
-
-      if 'mlag' in pd:
-        yield "vpc %s" % str(pd['mlag'])
-
-      if 'lag' in pd:
-        yield " channel-group %d mode %s" % (pd['lag'], (pd['lagmode'] if 'lagmode' in pd else "on"))
-
-      if 'extra' in pd:
-        for e in pd['extra']:
-          yield " %s" % e
-
+      self._genPhysPortConfig(pd, newconf, activeconf)
       yield "!"
 
 
@@ -634,5 +635,9 @@ class IOSBox(nak.BasicGen,nak.Box):
 
 
 class NXOSBox(IOSBox):
-  pass
+  def _genPhysPortConfig(self, pd, newconf, activeconf):
+    super()._genPhysPortConfig(pd, newconf, activeconf)
+
+    if 'mlag' in pd:
+      yield "vpc %s" % str(pd['mlag'])
 
