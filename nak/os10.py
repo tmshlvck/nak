@@ -490,11 +490,8 @@ class OS10Box(nak.BasicGen,nak.Box):
       return []
 
 
-  def genSyncAll(self, newconf):
-    logging.debug("Configuration read in progress for host %s ..." % self.hostname)
-    actcfgo = OS10Parser(self.getRunning().splitlines())
-    activeconf = actcfgo.getConfStruct()
-    logging.debug("Configuration parsed for host %s ." % self.hostname)
+  def genSyncAll(self, newconf, activeconf):
+    logging.debug("Generating configuration for host %s ." % self.hostname)
     res = []
     if 'vlans' in newconf:
       res += list(self.genSyncVLANS(newconf, activeconf))

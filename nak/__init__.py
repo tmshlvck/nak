@@ -285,8 +285,11 @@ class Batch(object):
         bcmpasswd = None
       logging.debug("Connecting to %s ." % h['inventory_hostname'])
       b.connect(h['inventory_hostname'], h['ansible_user'], h['ansible_password'], bcmpasswd)
+      activeconflines = b.getRunning().splitlines()
       logging.debug("Configuration from %s Downloaded..." % h['inventory_hostname'])
-      textcfg = '\n'.join(b.genSyncAll(confstruct))
+      activeconf = po(activeconflines).getConfStruct()
+      logging.debug("Configuration for host %s parsed..." % h['inventory_hostname'])
+      textcfg = '\n'.join(b.genSyncAll(confstruct, activeconf))
       logging.debug("Config for %s generated..." % h['inventory_hostname'])
       if textcfg:
         res = b.configure(textcfg, simulate=self.sim)
