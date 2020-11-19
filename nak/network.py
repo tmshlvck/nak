@@ -2,7 +2,7 @@
 # coding: utf-8
 
 """
-nak.inventory
+nak.network
 
 Copyright (C) 2020 Tomas Hlavacek (tmshlvck@gmail.com)
 
@@ -62,29 +62,29 @@ class Switch(NAKConf):
 class Network(NAKConf):
   """ Prototype config:
 ---
-- name: Ignum
-  switch_confdir: /var/lib/nak/yconfig
-  vlans:
-    global:
-      9:
-        name: Mgmt-Oldnet-PDU-IPMI
-      10:
-        name: IPMI
-      11:
-        name: netmgmt
-      12:
-        name: PVE-A
-    customer1:
-      9:
-        name: Mgmt-Oldnet-PDU-IPMI
-      13:
-        name: Customer-Local
-        
-  switch:
-    - hostname: itchy.net.ignum.cz
-      config: /var/lib/nak/yconfig/itchy.net.ignum.cz.yml
-      core: true
-      vlan_group: global
+name: Ignum
+switch_confdir: /var/lib/nak/yconfig
+vlans:
+  global:
+    9:
+      name: Mgmt-Oldnet-PDU-IPMI
+    10:
+      name: IPMI
+    11:
+      name: netmgmt
+    12:
+      name: PVE-A
+  customer1:
+    9:
+      name: Mgmt-Oldnet-PDU-IPMI
+    13:
+      name: Customer-Local
+      
+switch:
+  - hostname: itchy.net.ignum.cz
+    config: /var/lib/nak/yconfig/itchy.net.ignum.cz.yml
+    core: true
+    vlan_group: global
     
   """
 
@@ -99,17 +99,51 @@ class Network(NAKConf):
       yield (s, self.getSwitchConfig(s))
 
   @classmethod
-  def structDiff(cls, a, b):
-    if a == b:
-      return "Diff: A==B"
+  def structDiff(cls, old, new):
+    if old == new:
+      return "subtree is equal"
     else:
-      return "A: %s\nB: %s" % (str(a), str(b))
+      if not old and new:
+        return "old: missing, new: %s" % str(new)
+      elif old and not new:
+        return "old: %s , new: missing" % str(old)
+      elif isinstance(old, dict) and isinstance(new, dict):
+        res = ""
+        for k in old:
+          if k in new:
+            if old[k] == new[k]:
+              pass
+            else:
+              res += "%s->%s\n" % (k, cls.structDiff(old[k], new[k]))
+          else:
+            res += "%s-> old: %s, new missing\n" % (k, str(old[k]))
+        for k in new:
+          if k in old:
+            pass
+          else:
+            res += "%s-> old missing, new: %s\n" % (k, str(new[k]))
+        return res
+      elif isinstance(old, list) and isinstance(new, list):
+        res = ""
+        for e in old:
+          if e in new:
+            pass
+          else:
+            res += "- old: %s, new missing\n" % str(e)
+        for k in new:
+          if k in old:
+            pass
+          else:
+            res += "- old missing, new: %s\n" % str(e)
+        return res
+      else:
+        return "old: %s, new: %s" % (str(a), str(b))
 
   def updateVLANs(self, sim=False):
     for swdef, sw in self.getSwitches():
       if 'vlan_group' in swdef:
         new_vlans = self.confstruct['vlans'][swdef['vlan_group']]
-        if sim:
+        if sim or swdef.get('readonly', False):
           logging.info("Simulating setting VLANs for host %s", swdef['hostname'])
           logging.info(self.structDiff(sw.confstruct['vlans'], new_vlans))
         else:
