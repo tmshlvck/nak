@@ -205,7 +205,7 @@ class IOSParser(CiscoLikeParser):
       iface['mtu'] = int(m)
       return
 
-    if not 'extra' in ifaces[name]:
+    if not 'extra' in iface:
       iface['extra'] = []
     iface['extra'].append(c.text.strip())
 
