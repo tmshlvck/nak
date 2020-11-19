@@ -20,7 +20,8 @@ setup(name='nak',
     scripts = [
         'scripts/nak',
         'scripts/box2yaml',
-        'scripts/inv2csv'
+        'scripts/inv2csv',
+        'scripts/netgen'
         ],
    )
 

@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+# coding: utf-8
+
+"""
+netgen
+
+Copyright (C) 2020 Tomas Hlavacek (tmshlvck@gmail.com)
+
+This module is a part of Network Automation Toolkit.
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version.
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along with
+this program. If not, see <http://www.gnu.org/licenses/>.
+"""
+
+import logging
+#logging.basicConfig(filename='test.log', level=logging.DEBUG)
+#logger = logging.getLogger("netmiko")
+
+import click
+import yaml
+import nak.network
+
+import warnings
+warnings.simplefilter("ignore")
+
+@click.command()
+@click.option('-s', '--simulate', 's', help="simulate", is_flag=True)
+@click.option('-v', '--verbose', 'v', help="verbose output", is_flag=True)
+@click.argument('netyml', type=click.Path(exists=True))
+def main(s, v, netyml):
+  """
+  Read network description YAML file and update all switch config YAML files
+  in order to set them according to the big picture.
+  """
+  if v:
+    logging.basicConfig(level=logging.DEBUG)
+
+  if s:
+    logging.basicConfig(level=logging.INFO)
+
+  net = nak.network.Network(netyml)
+  net.update(s)
+
+
+if __name__ == '__main__':
+  main()
+

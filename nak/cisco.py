@@ -316,6 +316,7 @@ class IOSParser(CiscoLikeParser):
     def setup_nb(nbip, nghbs):
       if not nbip in nghbs:
         nghbs[nbip] = OrderedDict()
+        nghbs[nbip]['shutdown'] = False
 
     def decrypt_type7(pw):
       # Copyright (c) 2016 Richy Strnad
@@ -372,6 +373,12 @@ class IOSParser(CiscoLikeParser):
         nb = m.group(1)
         setup_nb(nb, nghbs)
         nghbs[nb]['password'] = decrypt_type7(m.group(2).strip())
+
+      m = re.match(r'^\s*neighbor\s+([a-fA-F0-9\.:]+)\s+shutdown.*$', l.text)
+      if m:
+        nb = m.group(1)
+        setup_nb(nb, nghbs)
+        nghbs[nb]['shutdown'] = True
 
       m = re.match(r'^\s*neighbor\s+([a-fA-F0-9\.:]+)\s+activate\s*$', l.text)
       if m:

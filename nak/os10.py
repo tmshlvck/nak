@@ -75,6 +75,11 @@ class OS10Parser(nak.cisco.CiscoLikeParser):
           ifaces[name]['shutdown'] = True
           continue
 
+        m = c.re_match_typed(r"^\s*(no shutdown)\s*$")
+        if m:
+          ifaces[name]['shutdown'] = False
+          continue
+
         m = c.re_match_typed(r"^\s*switchport mode\s+(.+)$")
         if m:
           ifaces[name]['type'] = m
@@ -210,6 +215,81 @@ class OS10Parser(nak.cisco.CiscoLikeParser):
     return vlans
 
 
+  @classmethod
+  def _parse_bgp(cls, cp):
+    def setup_nb(nbip, nghbs):
+      if not nbip in nghbs:
+        nghbs[nbip] = OrderedDict()
+
+    def decrypt_type9(pw):
+      # TODO
+      return pw
+
+    def parse_neighbor_line(l, nghb):
+#      print("D:" + str(l))
+ 
+      m = re.match(r'^\s+remote-as\s+([0-9]+).*$', l.text)
+      if m:
+        nghb['remote-as'] = int(m.group(1))
+
+      m = re.match(r'^\s+description\s+(.+)$', l.text)
+      if m:
+        nghb['descr'] = m.group(1).strip()
+
+      m = re.match(r'^\s+inherit template\s+(.+)$', l.text)
+      if m:
+        nghb['peer-group'] = m.group(1).strip()
+
+      m = re.match(r'^\s+password\s+(.+)$', l.text)
+      if m:
+        nghb['password'] = decrypt_type9(m.group(1).strip())
+
+      m = re.match(r'^\s+no shutdown\s*$', l.text)
+      if m:
+        nghb['shutdown'] = False
+
+      m = re.match(r'^\s+shutdown\s*$', l.text)
+      if m:
+        nghb['shutdown'] = True
+
+      m = re.match(r'^\s+address-family\s+(.+)$', l.text)
+      if m:
+        act = True
+        for lc in l.children:
+          if 'no activate' in lc.text:
+            act = False
+        if act:
+          nghb['afi'] = m.group(1).strip()
+
+
+
+#        if not 'afi' in nghbs[nb]:
+#          nghbs[nb]['afi'] = []
+#        nghbs[nb]['afi'].append((af if af else 'ipv4'))
+         
+
+    bgp = OrderedDict()
+    for o in cp.find_objects(r'^\s*router\s+bgp\s+([0-9]+)'):
+      local_asn = int(o.re_match_typed(r'^\s*router\s+bgp\s+([0-9]+)').strip())
+      bgp[local_asn] = OrderedDict()
+      for c in o.children:
+        nb = c.re_match_typed(r'^\s*neighbor\s+([a-fA-F0-9\.:]+)\s*')
+        if nb:
+          setup_nb(nb, bgp[local_asn])
+          for nbc in c.children:
+            parse_neighbor_line(nbc, bgp[local_asn][nb])
+          continue
+
+        af = c.re_match_typed(r'^\s*address-family\s+(.+)$')
+        if af:
+          for afc in c.children:
+            if afc.re_match_typed(r'^\s*neighbor\s+([a-fA-F0-9\.:]+)\s+.*'):
+              parse_neighbor(afc, bgp[local_asn], af)
+
+    return bgp
+
+
+
   def parseConfig(self, config):
     cp = ciscoconfparse.CiscoConfParse(config)
 
@@ -223,6 +303,9 @@ class OS10Parser(nak.cisco.CiscoLikeParser):
     self.cfg['vlans'] = vlans
     self.cfg['ports'] = self._parse_ifaces(cp, vlans, self.raw)
     self.cfg['users'] = self._parse_users(cp)
+    bgpr = self._parse_bgp(cp)
+    if bgpr:
+      self.cfg['bgp'] = bgpr
 
 
 
@@ -386,11 +469,15 @@ class OS10Box(nak.BasicGen,nak.Box):
             if 'password' in rtr[nbip]:
               res.append('password %s' % rtr[nbip]['password'])
 
-            res.append('address-family %s unicast' % afi)
+            res.append('address-family %s' % afi)
             res.append('activate')
             res.append('!')
 
-            res.append('no shutdown')
+            if not rtr[nbip].get('shutdown', False):
+              res.append('no shutdown')
+            else:
+              res.append('shutdown')
+
             res.append('!')
       for nbip in activeconf['bgp'][localas]:
         if not nbip in rtr:

@@ -291,11 +291,12 @@ class Batch(object):
       if textcfg:
         res = b.configure(textcfg, simulate=self.sim)
         if self.sim:
-          ret+=("Config to execute for %s:\n" % h['inventory_hostname'])
+          ret+=("=== Commands for %s ===\n" % h['inventory_hostname'])
           ret+=str(textcfg)
-          ret+=("\nDiff from the box %s:\n" % h['inventory_hostname'])
+          ret+=("=== End commands for %s ===\n" % h['inventory_hostname'])
+          ret+=("\n*** Diff for %s: ***\n" % h['inventory_hostname'])
           ret+=str(res)
-          ret+="\n"
+          ret+=("\n*** End diff for %s: ***\n" % h['inventory_hostname'])
       else:
         logging.debug("No configuration/changes to execute.")
         if sim:
