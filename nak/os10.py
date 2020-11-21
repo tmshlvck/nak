@@ -323,6 +323,9 @@ class OS10Box(nak.BasicGen,nak.Box):
         yield "no interface vlan%d" % vid
 
     for vid in newconf['vlans']:
+      if newconf['vlans'][vid] == activeconf['vlans'].get(vid, None):
+        continue
+
       if not vid in self.IGNORE_VLANS:
         yield "interface vlan%d" % vid
         if 'name' in newconf['vlans'][vid]:

@@ -456,6 +456,9 @@ class IOSBox(nak.BasicGen,nak.Box):
         yield "no vlan %d" % vid
 
     for vid in newconf['vlans']:
+      if newconf['vlans'][vid] == activeconf['vlans'].get(vid, None):
+        continue
+
       if not vid in self.IGNORE_VLANS:
         yield "vlan %d" % vid
         if 'name' in newconf['vlans'][vid]:
