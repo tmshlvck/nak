@@ -146,7 +146,7 @@ class AnsibleInventoryConfigs(AnsibleInventory):
 
 
   def loadConfStructRecursive(self, cfgfilename):
-    with open(ccp, 'r') as fh:
+    with open(cfgfilename, 'r') as fh:
       cc = yaml.load(fh, Loader=yaml.Loader)
 
       inhcfg = {}
@@ -161,9 +161,9 @@ class AnsibleInventoryConfigs(AnsibleInventory):
 
   def getHostsWithConfStruct(self, limit=None):
     for h,hcp in self.getHostsWithConfPaths(limit):
-      if not hc:
+      if not hcp:
         raise Exception("Missing config file %s for host %s", hcp, str(h))
 
-      yield (h, self.loadConfStructRecursive(hc))
+      yield (h, self.loadConfStructRecursive(hcp))
 
 

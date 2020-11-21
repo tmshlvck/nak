@@ -137,7 +137,7 @@ switch:
             res += "- old missing, new: %s\n" % str(e)
         return res
       else:
-        return "old: %s, new: %s" % (str(a), str(b))
+        return "old: %s, new: %s" % (str(old), str(new))
 
   def updateVLANs(self, sim=False):
     for swdef, sw in self.getSwitches():

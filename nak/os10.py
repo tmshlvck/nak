@@ -144,11 +144,11 @@ class OS10Parser(nak.cisco.CiscoLikeParser):
           ifaces[name]['mtu'] = int(m)-22 # OS10 has WEIRD MTU computation - they count the Eth header including 802.1Q tag and the CRC trailer, all sums up to 22 bytes more than what Cisco/others call MTUa (= L3 datagram size)
           continue
 
-        if 'speed' in c.text or 'negotiation' in c.text or 'spanning-tree' in c.text:
-          if not 'extra' in ifaces[name]:
-            ifaces[name]['extra'] = []
-          ifaces[name]['extra'].append(c.text.strip())
-          continue
+#        if 'speed' in c.text or 'negotiation' in c.text or 'spanning-tree' in c.text:
+#          if not 'extra' in ifaces[name]:
+#            ifaces[name]['extra'] = []
+#          ifaces[name]['extra'].append(c.text.strip())
+#          continue
 
         if not 'extra' in ifaces[name]:
           ifaces[name]['extra'] = []
@@ -366,6 +366,10 @@ class OS10Box(nak.BasicGen,nak.Box):
         logging.debug("Skipping port with invalid config %s", p)
         continue
 
+      if pd == activeconf['ports'].get(p, None):
+        logging.debug("Skipping no-change configuration for port %s", p)
+        continue
+
       if 'clean' in pd and pd['clean'] == True:
         yield "default interface %s" % p
         yield "interface %s" % p
@@ -420,7 +424,7 @@ class OS10Box(nak.BasicGen,nak.Box):
 
       if 'extra' in pd:
         for e in pd['extra']:
-          yield "%s" % e
+          yield " %s" % e
 
       yield "!"
 

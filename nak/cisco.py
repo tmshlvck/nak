@@ -557,6 +557,10 @@ class IOSBox(nak.BasicGen,nak.Box):
         logging.debug("Skipping port with not config %s", p)
         continue
 
+      if pd == activeconf['ports'].get(p, None):
+        logging.debug("Skipping no-change configuration for port %s", p)
+        continue
+
       if 'clean' in pd and pd['clean'] == True:
         yield "default interface %s" % p
         yield "interface %s" % p
