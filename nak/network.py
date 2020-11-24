@@ -187,44 +187,51 @@ switches:
           logging.info(self.structDiff(swconf.confstruct['vlans'], new_vlans))
         else:
           logging.debug("Setting VLANs for host %s", swname)
-          sw.confstruct['vlans'] = new_vlans
-          sw.save()
+          swconf.confstruct['vlans'] = new_vlans
+          swconf.save()
 
 
   def updateL2Backbone(self, sim=False):
     mtu = self.confstruct.get('backbone', {}).get('mtu', 1500)
 
     for swname, swdef, swconf in self.getSwitchesWithConf():
-      if swdef.get('core', False):
-        for bl in swdef.get('backbone', []):
-          if sim or swdef.get('readonly', False):
-            logging.info("Simulating setting backbone trunk for host %s port %s", swname, bl['interface'])
-          else:
-            logging.debug("Setting backbone trunk for host %s port %s", swname, bl['interface'])
-            swconf.setTrunkVLANs(bl['interface'], 1, 'all')
-            swconf.setPortMTU(bl['interface'], mtu)
+      try:
+        if swdef.get('core', False):
+          for bl in swdef.get('backbone', []):
+            if sim or swdef.get('readonly', False):
+              logging.info("Simulating setting backbone trunk for host %s port %s", swname, bl['interface'])
+            else:
+              logging.debug("Setting backbone trunk for host %s port %s", swname, bl['interface'])
+              swconf.setTrunkVLANs(bl['interface'], 1, 'all')
+              swconf.setPortMTU(bl['interface'], mtu)
           
-      else: # access
-        for ul in swdef.get('uplinks', []):
-          if ul.get('minimize', False):
-            vlans = swconf.getActiveVLANs(set([u['interface'] for u in swdef['uplinks']]))
-          else:
-            vlans = 'all'
+        else: # access
+          for ul in swdef.get('uplinks', []):
+            if ul.get('minimize', False):
+              vlans = swconf.getActiveVLANs(set([u['interface'] for u in swdef['uplinks']]))
+            else:
+              vlans = 'all'
 
-          if sim or swdef.get('readonly', False):
-            logging.info("Simulating setting uplink trunk on host %s port %s", swname, ul['interface'])
-          else:
-            logging.debug("Setting uplink trunk on host %s port %s", swname, ul['interface'])
-            swconf.setTrunkVLANs(ul['interface'], 1, vlans)
-            swconf.setPortMTU(ul['interface'], mtu)
+            if sim or swdef.get('readonly', False):
+              logging.info("Simulating setting uplink trunk on host %s port %s", swname, ul['interface'])
+            else:
+              logging.debug("Setting uplink trunk on host %s port %s", swname, ul['interface'])
+              swconf.setTrunkVLANs(ul['interface'], 1, vlans)
+              swconf.setPortMTU(ul['interface'], mtu)
 
-          peerconf = self.getSwitchConfig(ul['peer'])
-          if sim or peerconf.get('readonly', False):
-            logging.info("Simulating setting downlink trunk on host %s port %s towards %s", ul['peer'], ul['peer_interface'], swname)
-          else:
-            logging.info("Setting downlink trunk on host %s port %s towards %s", ul['peer'], ul['peer_interface'], swname)
-            peerconf.setTrunkVLANs(ul['peer_interface'], 1, vlans)
-            peerconf.setPortMTU(ul['peer_interface'], mtu)
+            peerconf = self.getSwitchConfig(ul['peer'])
+            if sim or peerconf.confstruct.get('readonly', False):
+              logging.info("Simulating setting downlink trunk on host %s port %s towards %s", ul['peer'], ul['peer_interface'], swname)
+            else:
+              logging.info("Setting downlink trunk on host %s port %s towards %s", ul['peer'], ul['peer_interface'], swname)
+              peerconf.setTrunkVLANs(ul['peer_interface'], 1, vlans)
+              peerconf.setPortMTU(ul['peer_interface'], mtu)
+              peerconf.save()
+
+            swconf.save()
+      except:
+        logging.error("Error in YAML configuration modify on %s", swname)
+        raise
 
 
   def update(self, sim=False):
