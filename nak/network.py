@@ -26,7 +26,6 @@ import os.path
 
 import nak
 
-
 class NAKConf(object):
   def __init__(self, yamlfilename=None):
     if yamlfilename:
@@ -58,6 +57,31 @@ class Switch(NAKConf):
   def mergeVLANs(self, vlans):
     self.confstruct['vlans'] = {**self.confstruct.get('vlans',{}), **vlans}
 
+  def setTrunkVLANs(self, iface, untagged, tagged):
+    self.confstruct['ports'][iface]['untagged'] = untagged
+    self.confstruct['ports'][iface]['tagged'] = tagged
+
+  def setPortMTU(self, iface, mtu):
+    self.confstruct['ports'][iface]['mtu'] = int(mtu)
+
+  def getActiveVLANs(self, ignore_ifaces=set()):
+    vlans = set()
+    for iface in self.confstruct['ports']:
+      if iface in ignore_ifaces:
+        continue
+      ifdef = self.confstruct['ports'][iface]
+      if ifdef.get('shutdown', False):
+        continue
+      if ifdef.get('clean', False):
+        continue
+      if ifdef.get('type', 'access') == 'access':
+        vlans.add(int(ifdef.get('untagged', 1)))
+      elif ifdef['type'] == 'trunk':
+        if 'untagged' in ifdef:
+          vlans.add(int(ifdef['untagged']))
+        vlans |= set([int(vid) for vid in ifdef.get('tagged', [])])
+    return sorted(list(vlans))
+
 
 class Network(NAKConf):
   """ Prototype config:
@@ -80,23 +104,38 @@ vlans:
     13:
       name: Customer-Local
       
-switch:
-  - hostname: itchy.net.ignum.cz
-    config: /var/lib/nak/yconfig/itchy.net.ignum.cz.yml
+switches:
+  gloria.net.ignum.cz:
     core: true
     vlan_group: global
-    
+    backbone:
+      - interface: port-channel1
+        peer: itchy.net.ignum.cz
+        peer_interface: port-channel1
+      - interface: port-channel1
+        peer: scratchy.net.ignum.cz
+        peer_interface: port-channel1
+  a7.net.ignum.cz:
+    readonly: true
+    core: false
+    vlan_group: global
+    uplinks:
+      - interface: '48'
+        peer: burns.net.ignum.cz
+        peer_interface: GigabitEthernet0/36
+        minimize: true 
   """
 
-  def getSwitchConfig(self, netswitch):
-    if 'config' in netswitch:
-      return Switch(netswitch['config'])
+  def getSwitchConfig(self, switchname):
+    swdef = self.confstruct['switches'][switchname]
+    if 'config' in swdef:
+      return Switch(swdef['config'])
     else:
-      return Switch(os.path.join(self.confstruct['switch_confdir'],'%s.yml' % netswitch['hostname']))
+      return Switch(os.path.join(self.confstruct['switch_confdir'],'%s.yml' % switchname))
 
-  def getSwitches(self):
-    for s in self.confstruct['switch']:
-      yield (s, self.getSwitchConfig(s))
+  def getSwitchesWithConf(self):
+    for switchname in self.confstruct['switches']:
+      yield (switchname, self.confstruct['switches'][switchname], self.getSwitchConfig(switchname))
 
   @classmethod
   def structDiff(cls, old, new):
@@ -140,18 +179,54 @@ switch:
         return "old: %s, new: %s" % (str(old), str(new))
 
   def updateVLANs(self, sim=False):
-    for swdef, sw in self.getSwitches():
+    for swname, swdef, swconf in self.getSwitchesWithConf():
       if 'vlan_group' in swdef:
         new_vlans = self.confstruct['vlans'][swdef['vlan_group']]
         if sim or swdef.get('readonly', False):
-          logging.info("Simulating setting VLANs for host %s", swdef['hostname'])
-          logging.info(self.structDiff(sw.confstruct['vlans'], new_vlans))
+          logging.info("Simulating setting VLANs for host %s", swname)
+          logging.info(self.structDiff(swconf.confstruct['vlans'], new_vlans))
         else:
-          logging.debug("Setting VLANs for host %s", swdef['hostname'])
+          logging.debug("Setting VLANs for host %s", swname)
           sw.confstruct['vlans'] = new_vlans
           sw.save()
 
 
+  def updateL2Backbone(self, sim=False):
+    mtu = self.confstruct.get('backbone', {}).get('mtu', 1500)
+
+    for swname, swdef, swconf in self.getSwitchesWithConf():
+      if swdef.get('core', False):
+        for bl in swdef.get('backbone', []):
+          if sim or swdef.get('readonly', False):
+            logging.info("Simulating setting backbone trunk for host %s port %s", swname, bl['interface'])
+          else:
+            logging.debug("Setting backbone trunk for host %s port %s", swname, bl['interface'])
+            swconf.setTrunkVLANs(bl['interface'], 1, 'all')
+            swconf.setPortMTU(bl['interface'], mtu)
+          
+      else: # access
+        for ul in swdef.get('uplinks', []):
+          if ul.get('minimize', False):
+            vlans = swconf.getActiveVLANs(set([u['interface'] for u in swdef['uplinks']]))
+          else:
+            vlans = 'all'
+
+          if sim or swdef.get('readonly', False):
+            logging.info("Simulating setting uplink trunk on host %s port %s", swname, ul['interface'])
+          else:
+            logging.debug("Setting uplink trunk on host %s port %s", swname, ul['interface'])
+            swconf.setTrunkVLANs(ul['interface'], 1, vlans)
+            swconf.setPortMTU(ul['interface'], mtu)
+
+          peerconf = self.getSwitchConfig(ul['peer'])
+          if sim or peerconf.get('readonly', False):
+            logging.info("Simulating setting downlink trunk on host %s port %s towards %s", ul['peer'], ul['peer_interface'], swname)
+          else:
+            logging.info("Setting downlink trunk on host %s port %s towards %s", ul['peer'], ul['peer_interface'], swname)
+            peerconf.setTrunkVLANs(ul['peer_interface'], 1, vlans)
+            peerconf.setPortMTU(ul['peer_interface'], mtu)
+
+
   def update(self, sim=False):
     self.updateVLANs(sim)
-
+    self.updateL2Backbone(sim)
