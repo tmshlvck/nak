@@ -141,7 +141,8 @@ class OS10Parser(nak.cisco.CiscoLikeParser):
 
         m = c.re_match_typed(r'^\s*mtu\s+([0-9]+)\s*$')
         if m:
-          ifaces[name]['mtu'] = int(m)-22 # OS10 has WEIRD MTU computation - they count the Eth header including 802.1Q tag and the CRC trailer, all sums up to 22 bytes more than what Cisco/others call MTUa (= L3 datagram size)
+          ifaces[name]['mtu'] = int(m)-32 # OS10 has WEIRD MTU computation - they count the Eth header including 802.1Q tag and the CRC trailer, all sums up to 22 bytes more than what Cisco/others call MTUa (= L3 datagram size; it does not sum up, but 32 seems to be the right constant)
+
           continue
 
 #        if 'speed' in c.text or 'negotiation' in c.text or 'spanning-tree' in c.text:
@@ -417,7 +418,7 @@ class OS10Box(nak.BasicGen,nak.Box):
         pass
 
       if 'mtu' in pd:
-        yield " mtu %d" % (pd['mtu']+22) # OS10 means by MTU the total Ethernet frame size, not IP MTU, we add 22 (14 for EthII, 4 for dot1q and 4 for CRC)
+        yield " mtu %d" % (pd['mtu']+32) # OS10 means by MTU the total Ethernet frame size, not IP MTU, we add 22 (14 for EthII, 4 for dot1q and 4 for CRC; it does not sum up, but 32 seems to be the right constant)
 
       if 'mlag' in pd:
         yield " vlt-port-channel %s" % str(pd['mlag'])
