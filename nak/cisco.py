@@ -509,7 +509,7 @@ class IOSBox(nak.BasicGen,nak.Box):
           yield " switchport trunk encapsulation %s" % pd['encap']
         yield " switchport mode trunk"
  
-        if 'untagged' in p:
+        if 'untagged' in pd:
           yield " switchport trunk native vlan %d" % pd['untagged']
 
         tgt = self._expand_tagged_vlans(newconf, p)
