@@ -433,12 +433,31 @@ class NXOSParser(IOSParser):
 
     IOSParser._parse_if_line(c, iface)
 
+  def parseConfig(self, conffile):
+    super().parseConfig(conffile)
+
+    # TODO: parse VXLAN
+
+    # this is a hack, TODO: figure out how to detect whether the switch
+    # supports per-port MTU settings
+    config_port_mtu = False
+    for p in self.cfg['ports']:
+      if 'mtu' in self.cfg['ports'][p]:
+        config_port_mtu = True
+
+    # if vxlans are supported then config_port_mtu = True
+
+    if not 'config' in self.cfg:
+      self.cfg['config'] = {}
+    self.cfg['config']['port_mtu'] = config_port_mtu
+
 
 class IOSBox(nak.BasicGen,nak.Box):
   IGNORE_VLANS = [1,1002, 1003, 1004, 1005]
+  BOXTYPE = "ios"
 
   def __init__(self):
-    super().__init__("ios")
+    super().__init__(self.BOXTYPE)
 
 
   def genSyncVLANS(self, newconf, activeconf):
@@ -637,12 +656,15 @@ class IOSBox(nak.BasicGen,nak.Box):
 
 
 class NXOSBox(IOSBox):
+  BOXTYPE = "nxos_ssh"
+
   def _genPhysPortConfig(self, p, pd, newconf, activeconf):
     super()._genPhysPortConfig(p, pd, newconf, activeconf)
 
     if 'mlag' in pd:
       yield "vpc %s" % str(pd['mlag'])
 
-    if 'mtu' in pd:
-      yield " mtu %d" % pd['mtu']
+    if newconf.get('config', {}).get('port_mtu', False):
+      if 'mtu' in pd:
+        yield " mtu %d" % pd['mtu']
 

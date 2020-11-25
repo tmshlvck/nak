@@ -302,7 +302,7 @@ class Batch(object):
           ret+=("\n*** End diff for %s: ***\n" % h['inventory_hostname'])
       else:
         logging.debug("No configuration/changes to execute.")
-        if sim:
+        if self.sim:
           ret+=("No changes/config to execute for %s:\n" % h['inventory_hostname'])
       logging.debug("Configuration of %s finished. Closing..." % h['inventory_hostname'])
       b.close()
