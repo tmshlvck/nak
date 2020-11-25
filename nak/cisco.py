@@ -640,7 +640,6 @@ class NXOSBox(IOSBox):
   def _genPhysPortConfig(self, pd, newconf, activeconf):
     super()._genPhysPortConfig(pd, newconf, activeconf)
 
-    if newconf == activeconf
     if 'mlag' in pd:
       yield "vpc %s" % str(pd['mlag'])
 
