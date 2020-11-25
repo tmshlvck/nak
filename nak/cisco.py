@@ -479,12 +479,12 @@ class IOSBox(nak.BasicGen,nak.Box):
           except:
             print('DEBUG: Exception in %s %s'%(str(p),str(pd)))
             raise
-        return list(self._compact_int_list(pd['tagged']))
+        return list(cls._compact_int_list(pd['tagged']))
     else:
       return None
 
 
-  def _genPhysPortConfig(self, pd, newconf, activeconf):
+  def _genPhysPortConfig(self, p, pd, newconf, activeconf):
     if 'descr' in pd and pd['descr']:
       yield " description %s" % pd['descr']
 
@@ -559,7 +559,7 @@ class IOSBox(nak.BasicGen,nak.Box):
         yield "!"
         continue
 
-      res = list(self._genPhysPortConfig(pd, newconf, activeconf))
+      res = list(self._genPhysPortConfig(p, pd, newconf, activeconf))
       if res:
         yield "interface %s " % p
         for r in res:
@@ -637,8 +637,8 @@ class IOSBox(nak.BasicGen,nak.Box):
 
 
 class NXOSBox(IOSBox):
-  def _genPhysPortConfig(self, pd, newconf, activeconf):
-    super()._genPhysPortConfig(pd, newconf, activeconf)
+  def _genPhysPortConfig(self, p, pd, newconf, activeconf):
+    super()._genPhysPortConfig(p, pd, newconf, activeconf)
 
     if 'mlag' in pd:
       yield "vpc %s" % str(pd['mlag'])
