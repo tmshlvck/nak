@@ -191,20 +191,6 @@ class IOSParser(CiscoLikeParser):
         iface['lagmode'] = 'on'
       return
 
-    # Nexus specific: TODO move to NXOS object
-    m = c.re_match_typed(r'^\s*vpc\s+(.*)\s*$')
-    if m:
-      if m.strip() == 'peer-link':
-        iface['vpc-peer-link'] = True
-      else:
-        iface['mlag'] = int(m)
-      return
-       
-    m = c.re_match_typed(r'^\s*mtu\s+([0-9]+)\s*$')
-    if m:
-      iface['mtu'] = int(m)
-      return
-
     if not 'extra' in iface:
       iface['extra'] = []
     iface['extra'].append(c.text.strip())
@@ -439,6 +425,11 @@ class NXOSParser(IOSParser):
       else:
         iface['mlag'] = int(m)
       return
+       
+    m = c.re_match_typed(r'^\s*mtu\s+([0-9]+)\s*$')
+    if m:
+      iface['mtu'] = int(m)
+      return
 
     IOSParser._parse_if_line(c, iface)
 
@@ -538,9 +529,6 @@ class IOSBox(nak.BasicGen,nak.Box):
     else:
       pass
 
-    if 'mtu' in pd:
-      yield " mtu %d" % pd['mtu']
-
     if 'lag' in pd:
       yield " channel-group %d mode %s" % (pd['lag'], (pd['lagmode'] if 'lagmode' in pd else "on"))
 
@@ -557,7 +545,7 @@ class IOSBox(nak.BasicGen,nak.Box):
         continue
 
       if not type(pd) is dict:
-        logging.debug("Skipping port with not config %s", p)
+        logging.debug("Skipping port with no config %s", p)
         continue
 
       if pd == activeconf['ports'].get(p, None):
@@ -571,9 +559,12 @@ class IOSBox(nak.BasicGen,nak.Box):
         yield "!"
         continue
 
-      yield "interface %s " % p
-      self._genPhysPortConfig(pd, newconf, activeconf)
-      yield "!"
+      res = list(self._genPhysPortConfig(pd, newconf, activeconf))
+      if res:
+        yield "interface %s " % p
+        for r in res:
+          yield r
+        yield "!"
 
 
   def genSyncPortChannels(self, newconf, activeconf):
@@ -649,6 +640,10 @@ class NXOSBox(IOSBox):
   def _genPhysPortConfig(self, pd, newconf, activeconf):
     super()._genPhysPortConfig(pd, newconf, activeconf)
 
+    if newconf == activeconf
     if 'mlag' in pd:
       yield "vpc %s" % str(pd['mlag'])
+
+    if 'mtu' in pd:
+      yield " mtu %d" % pd['mtu']
 
