@@ -80,6 +80,10 @@ class Switch(NAKConf):
         if 'untagged' in ifdef:
           vlans.add(int(ifdef['untagged']))
         vlans |= set([int(vid) for vid in ifdef.get('tagged', [])])
+
+    for v in vlans:
+      if not v in self.confstruct['vlans']:
+        raise Exception('switch %s has active undefined VLAN %d' % (self.confstruct['hostname'],v))
     return sorted(list(vlans))
 
 
@@ -181,6 +185,7 @@ switches:
   def updateVLANs(self, sim=False):
     for swname, swdef, swconf in self.getSwitchesWithConf():
       if 'vlan_group' in swdef:
+        # if not swdef.get('core', False): then minimize - TODO
         new_vlans = self.confstruct['vlans'][swdef['vlan_group']]
         if sim or swdef.get('readonly', False):
           logging.info("Simulating setting VLANs for host %s", swname)
@@ -227,8 +232,8 @@ switches:
               peerconf.setTrunkVLANs(ul['peer_interface'], 1, vlans)
               peerconf.setPortMTU(ul['peer_interface'], mtu)
               peerconf.save()
-
-            swconf.save()
+            peerconf.save()
+        swconf.save()
       except:
         logging.error("Error in YAML configuration modify on %s", swname)
         raise
