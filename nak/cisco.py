@@ -487,7 +487,7 @@ class IOSBox(nak.BasicGen,nak.Box):
         return None
 
       if type(pd['tagged']) is str:
-        if (pd['tagged'].lower() == 'all' or pd['tagged'] == '*'):
+        if pd['tagged'].lower() in cls.SYM_ALL_VLANS:
             return None
         else:
           raise ValueError('Unsupported tagged value:' % tgt)

@@ -119,6 +119,8 @@ class BasicParser(object):
 
 
 class BasicGen(object):
+  SYM_ALL_VLANS = ['all', '*']
+
   @classmethod
   def _compact_int_list(cls, lst):
     try:

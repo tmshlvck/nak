@@ -183,23 +183,23 @@ switches:
         return "old: %s, new: %s" % (str(old), str(new))
 
   def updateVLANs(self, sim=False):
-    for swname, swdef, swconf in self.getSwitchesWithConf():
+    for swname, swdef, swobj in self.getSwitchesWithConf():
       if 'vlan_group' in swdef:
         # if not swdef.get('core', False): then minimize - TODO
         new_vlans = self.confstruct['vlans'][swdef['vlan_group']]
         if sim or swdef.get('readonly', False):
           logging.info("Simulating setting VLANs for host %s", swname)
-          logging.info(self.structDiff(swconf.confstruct['vlans'], new_vlans))
+          logging.info(self.structDiff(swobj.confstruct['vlans'], new_vlans))
         else:
           logging.debug("Setting VLANs for host %s", swname)
-          swconf.confstruct['vlans'] = new_vlans
-          swconf.save()
+          swobj.confstruct['vlans'] = new_vlans
+          swobj.save()
 
 
   def updateL2Backbone(self, sim=False):
     mtu = self.confstruct.get('backbone', {}).get('mtu', 1500)
 
-    for swname, swdef, swconf in self.getSwitchesWithConf():
+    for swname, swdef, swobj in self.getSwitchesWithConf():
       try:
         if swdef.get('core', False):
           for bl in swdef.get('backbone', []):
@@ -207,13 +207,13 @@ switches:
               logging.info("Simulating setting backbone trunk for host %s port %s", swname, bl['interface'])
             else:
               logging.debug("Setting backbone trunk for host %s port %s", swname, bl['interface'])
-              swconf.setTrunkVLANs(bl['interface'], 1, 'all')
-              swconf.setPortMTU(bl['interface'], mtu)
+              swobj.setTrunkVLANs(bl['interface'], 1, 'all')
+              swobj.setPortMTU(bl['interface'], mtu)
           
         else: # access
           for ul in swdef.get('uplinks', []):
             if ul.get('minimize', False):
-              vlans = swconf.getActiveVLANs(set([u['interface'] for u in swdef['uplinks']]))
+              vlans = swobj.getActiveVLANs(set([u['interface'] for u in swdef['uplinks']]))
             else:
               vlans = 'all'
 
@@ -221,24 +221,53 @@ switches:
               logging.info("Simulating setting uplink trunk on host %s port %s", swname, ul['interface'])
             else:
               logging.debug("Setting uplink trunk on host %s port %s", swname, ul['interface'])
-              swconf.setTrunkVLANs(ul['interface'], 1, vlans)
-              swconf.setPortMTU(ul['interface'], mtu)
+              swobj.setTrunkVLANs(ul['interface'], 1, vlans)
+              swobj.setPortMTU(ul['interface'], mtu)
 
-            peerconf = self.getSwitchConfig(ul['peer'])
-            if sim or peerconf.confstruct.get('readonly', False):
+            peerobj = self.getSwitchConfig(ul['peer'])
+            if sim or peerobj.confstruct.get('readonly', False):
               logging.info("Simulating setting downlink trunk on host %s port %s towards %s", ul['peer'], ul['peer_interface'], swname)
             else:
               logging.info("Setting downlink trunk on host %s port %s towards %s", ul['peer'], ul['peer_interface'], swname)
-              peerconf.setTrunkVLANs(ul['peer_interface'], 1, vlans)
-              peerconf.setPortMTU(ul['peer_interface'], mtu)
-              peerconf.save()
-            peerconf.save()
-        swconf.save()
+              peerobj.setTrunkVLANs(ul['peer_interface'], 1, vlans)
+              peerobj.setPortMTU(ul['peer_interface'], mtu)
+              peerobj.save()
+            peerobj.save()
+        swobj.save()
       except:
         logging.error("Error in YAML configuration modify on %s", swname)
         raise
 
+  def pruneRemovedVLANs(self, sim=False, force=False):
+    for swname, swdef, swobj in self.getSwitchesWithConf():
+      swconf = swobj.confstruct
+      vlans = swconf['vlans']
+      for p in swconf['ports']:
+        pd = swconf['ports'][p]
+
+        if 'untagged' in pd:
+          if pd['untagged'] != 1 and not pd['untagged'] in vlans:
+            if pd.get('clear', False):
+              logging.error("Pruning untagged VLAN %d on clear interface %s on switch %s", pd['untagged'], p, swname)
+              del pd['untagged']
+            elif pd.get('shutdown', False):
+              logging.error("Pruning untagged VLAN %d on shutdown interface %s on switch %s", pd['untagged'], p, swname)
+              pd['untagged'] = 1
+            elif force:
+              logging.error("Force pruning untagged VLAN %d on UP interface %s on switch %s", pd['untagged'], p, swname)
+              pd['untagged'] = 1
+            else:
+              raise Exception("Can not prune untagged VLAN %d on UP interface %s on switch %s" % (pd['untagged'], p, swname))
+
+        if 'tagged' in pd and not pd['tagged'] in nak.BasicGen.SYM_ALL_VLANS :
+          for t in pd['tagged']:
+            if t != 1 and not t in vlans:
+              logging.error("Pruning tagged VLAN %d on shutdown interface %s on switch %s", t, p, swname)
+              pd['tagged'].remove(t)
+
+      swobj.save()
 
   def update(self, sim=False):
     self.updateVLANs(sim)
     self.updateL2Backbone(sim)
+    self.pruneRemovedVLANs(sim)
