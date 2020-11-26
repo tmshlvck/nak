@@ -62,7 +62,13 @@ class Switch(NAKConf):
     self.confstruct['ports'][iface]['tagged'] = tagged
 
   def setPortMTU(self, iface, mtu):
-    self.confstruct['ports'][iface]['mtu'] = int(mtu)
+    if self.confstruct.get('config', {}).get('port_mtu', False):
+      self.confstruct['ports'][iface]['mtu'] = int(mtu)
+    else:
+      if not 'config' in self.confstruct:
+        self.confstruct['config'] = {}
+      if mtu > self.confstruct['config'].get('global_mtu', 1500):
+        self.confstruct['config']['global_mtu'] = mtu
 
   def getActiveVLANs(self, ignore_ifaces=set()):
     vlans = set()
