@@ -209,6 +209,11 @@ class IOSParser(CiscoLikeParser):
         iface['lagmode'] = 'on'
       return
 
+    m = c.re_match_typed(r'^\s*mtu\s+([0-9]+)\s*$')
+    if m:
+      iface['mtu'] = int(m)
+      return
+
     if not 'extra' in iface:
       iface['extra'] = []
     for el in cls._expand_with_children(c):
@@ -418,6 +423,15 @@ class IOSParser(CiscoLikeParser):
 
     return bgp
 
+  def _guess_config(self):
+    # this is a hack, TODO: figure out how to detect whether the switch
+    # supports per-port MTU settings
+    config = { 'port_mtu' : False }
+    for p in self.cfg['ports']:
+      if 'mtu' in self.cfg['ports'][p]:
+        config['port_mtu'] = True
+
+    return config
 
   def parseConfig(self, conffile):
     cp = ciscoconfparse.CiscoConfParse(conffile)
@@ -436,6 +450,8 @@ class IOSParser(CiscoLikeParser):
     if bgpr:
       self.cfg['bgp'] = bgpr
 
+    self.cfg['config'] = self._guess_config()
+
 
 class NXOSParser(IOSParser):
   @classmethod
@@ -452,30 +468,13 @@ class NXOSParser(IOSParser):
         iface['mlag'] = int(m)
       return
        
-    m = c.re_match_typed(r'^\s*mtu\s+([0-9]+)\s*$')
-    if m:
-      iface['mtu'] = int(m)
-      return
-
+   
     IOSParser._parse_if_line(c, iface)
 
   def parseConfig(self, conffile):
     super().parseConfig(conffile)
 
     # TODO: parse VXLAN
-
-    # this is a hack, TODO: figure out how to detect whether the switch
-    # supports per-port MTU settings
-    config_port_mtu = False
-    for p in self.cfg['ports']:
-      if 'mtu' in self.cfg['ports'][p]:
-        config_port_mtu = True
-
-    # if vxlans are supported then config_port_mtu = True
-
-    if not 'config' in self.cfg:
-      self.cfg['config'] = {}
-    self.cfg['config']['port_mtu'] = config_port_mtu
 
 
 class IOSBox(nak.BasicGen,nak.Box):
@@ -578,6 +577,10 @@ class IOSBox(nak.BasicGen,nak.Box):
 
     if 'lag' in pd:
       yield " channel-group %d mode %s" % (pd['lag'], (pd['lagmode'] if 'lagmode' in pd else "on"))
+
+    if newconf.get('config', {}).get('port_mtu', False):
+      if 'mtu' in pd:
+        yield " mtu %d" % pd['mtu']
 
     if 'extra' in pd:
       for e in pd['extra']:
@@ -691,8 +694,4 @@ class NXOSBox(IOSBox):
 
     if 'mlag' in pd:
       yield "vpc %s" % str(pd['mlag'])
-
-    if newconf.get('config', {}).get('port_mtu', False):
-      if 'mtu' in pd:
-        yield " mtu %d" % pd['mtu']
 
