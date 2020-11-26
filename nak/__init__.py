@@ -118,6 +118,16 @@ class BasicParser(object):
     return yaml.dump(self.getConfStruct(), sort_keys=False, explicit_start=True)
 
 
+  @classmethod
+  def parseSVIName(cls, ifname):
+    m = re.match(r'^\s*vlan\s*([0-9]+)\s*$', ifname.lower())
+    if m:
+      return int(m.group(1))
+    else:
+      return None
+
+
+
 class BasicGen(object):
   SYM_ALL_VLANS = ['all', '*']
 

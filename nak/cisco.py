@@ -84,11 +84,24 @@ class CiscoLikeParser(nak.BasicParser):
     mi = re.match(r"^\s*([0-9\.]+) ([0-9\.]+)( secondary)?$", addr)
     if mi:
       return str(ipaddress.ip_interface('%s/%s' % (mi.group(1), mi.group(2))))
-    mi = re.match(r"^\s*([0-9a-fA-F:\.]+)/([0-9]+)( secondary)?$", addr)
+    mi = re.match(r"^\s*([0-9a-fA-F:\.]+)/([0-9]+)( secondary| eui-64)*$", addr)
     if mi:
-      return str(ipaddress.ip_interface('%s/%s' % (mi.group(1), mi.group(2))))
+      if mi.group(3) and mi.group(3).strip().lower() == 'eui-64':
+        return '%s eui-64' % str(ipaddress.ip_interface('%s/%s' % (mi.group(1), mi.group(2))))
+      else:
+        return str(ipaddress.ip_interface('%s/%s' % (mi.group(1), mi.group(2))))
 
     return None
+
+
+  @classmethod
+  def _expand_with_children(cls, c):
+    yield c.text
+    for cc in c.children:
+      for r in cls._expand_with_children(cc):
+        yield r
+
+
 
 
 class IOSParser(CiscoLikeParser):
@@ -98,17 +111,20 @@ class IOSParser(CiscoLikeParser):
 
 
   @classmethod
-  def _iface_filter(cls, ifname, iface):
+  def _ignore_iface(cls, ifname, iface):
     if 'mgmt' in ifname:
-      return False
-
-    if 'Vlan' in ifname:
-      return False
+      return True
 
     if 'vpc-peer-link' in iface:
-      return False
+      return True
 
-    return True
+    if 'Vlan' in ifname:
+      if 'ip_addr' in iface or 'ipv6_addr' in iface:
+        return False
+      else:
+        return True
+
+    return False
 
 
   @classmethod
@@ -164,7 +180,8 @@ class IOSParser(CiscoLikeParser):
 
     m = c.re_match_typed(r'^\s*ip address\s+(.+)')
     if m:
-      iface['type'] = 'no switchport'
+      if iface['type'] != 'svi':
+        iface['type'] = 'no switchport'
       a = cls._parse_address(m)
       if not 'ip_addr' in iface:
         iface['ip_addr'] = []
@@ -173,7 +190,8 @@ class IOSParser(CiscoLikeParser):
 
     m = c.re_match_typed(r'^\s*ipv6 address\s+(.+)')
     if m:
-      iface['type'] = 'no switchport'
+      if iface['type'] != 'svi':
+        iface['type'] = 'no switchport'
       a = cls._parse_address(m)
       if not 'ipv6_addr' in iface:
         iface['ipv6_addr'] = []
@@ -193,15 +211,14 @@ class IOSParser(CiscoLikeParser):
 
     if not 'extra' in iface:
       iface['extra'] = []
-    iface['extra'].append(c.text.strip())
-
+    for el in cls._expand_with_children(c):
+      iface['extra'].append(el.strip())
 
   @classmethod
   def _parse_if(cls, o, iface):
     """o = CiscConfParse object
     iface = OrderedDict resulting structure
     """
-
     for c in o.children:
       cls._parse_if_line(c, iface)
 
@@ -218,7 +235,11 @@ class IOSParser(CiscoLikeParser):
       if not name in ifaces:
         ifaces[name] = OrderedDict()
         ifaces[name]['shutdown'] = False
-        ifaces[name]['type'] = 'access'
+        svivlan = cls.parseSVIName(name)
+        if svivlan:
+          ifaces[name]['type'] = 'svi'
+        else:
+          ifaces[name]['type'] = 'access'
 
       cls._parse_if(o, ifaces[name])
 
@@ -244,7 +265,7 @@ class IOSParser(CiscoLikeParser):
         i.pop('untagged', None)
         i.pop('tagged', None)
 
-      if not cls._iface_filter(ifname, i):
+      if cls._ignore_iface(ifname, i):
         to_remove.append(ifname)
 
       if not cls._is_iface_configured(i):
@@ -265,6 +286,11 @@ class IOSParser(CiscoLikeParser):
       return True
     if 'untagged' in p and p['untagged'] != 1:
       return True
+    if 'ip_addr' in p:
+      return True
+    if 'ipv6_addr' in p:
+      return True
+
     if 'shutdown' in p and p['shutdown']:
       return False
 
@@ -542,6 +568,8 @@ class IOSBox(nak.BasicGen,nak.Box):
           yield " no switchport trunk allowed vlan"
 
       elif pd['type'] == 'no switchport':
+        pass
+      elif pd['type'] == 'svi':
         pass
       else:
         raise ValueError("Unknown port %s type: %s" % (p, pd['type']))

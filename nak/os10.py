@@ -38,15 +38,18 @@ class OS10Parser(nak.cisco.CiscoLikeParser):
 
 
   @classmethod
-  def _iface_filter(cls, ifname, iface):
+  def _ignore_iface(cls, ifname, iface):
     if 'mgmt' in ifname or 'management' in ifname:
-      return False
+      return True
 
     if 'vlan' in ifname:
-      return False
+      if 'ip_addr' in iface or 'ipv6_addr' in iface:
+        return False
+      else:
+        return True
 
-    return True
-  
+    return False
+
 
   @classmethod
   def _parse_ifaces(cls, cp, active_vlans, raw):
@@ -63,6 +66,8 @@ class OS10Parser(nak.cisco.CiscoLikeParser):
       if not name in ifaces:
         ifaces[name] = OrderedDict()
         ifaces[name]['shutdown'] = False
+        if 'vlan' in name:
+          ifaces[name]['type'] = 'svi'
 
       for c in o.children:
         m = c.re_match_typed(r"^\s*description\s+(.+)$").strip()
@@ -107,7 +112,8 @@ class OS10Parser(nak.cisco.CiscoLikeParser):
 
         m = c.re_match_typed(r'^\s*ip address\s+(.+)')
         if m:
-          ifaces[name]['type'] = 'no switchport'
+          if ifaces[name].get('type', '') != 'svi':
+            ifaces[name]['type'] = 'no switchport'
           a = cls._parse_address(m)
           if not 'ip_addr' in ifaces[name]:
             ifaces[name]['ip_addr'] = []
@@ -116,7 +122,8 @@ class OS10Parser(nak.cisco.CiscoLikeParser):
 
         m = c.re_match_typed(r'^\s*ipv6 address\s+(.+)')
         if m:
-          ifaces[name]['type'] = 'no switchport'
+          if ifaces[name].get('type', '') != 'svi':
+            ifaces[name]['type'] = 'no switchport'
           a = cls._parse_address(m)
           if not 'ipv6_addr' in ifaces[name]:
             ifaces[name]['ipv6_addr'] = []
@@ -153,7 +160,11 @@ class OS10Parser(nak.cisco.CiscoLikeParser):
 
         if not 'extra' in ifaces[name]:
           ifaces[name]['extra'] = []
-        ifaces[name]['extra'].append(c.text.strip())
+        for el in cls._expand_with_children(c):
+          if el == '!':
+            continue
+          ifaces[name]['extra'].append(el.strip())
+
 
     to_remove = []
     for ifname in ifaces:
@@ -180,7 +191,7 @@ class OS10Parser(nak.cisco.CiscoLikeParser):
         i.pop('untagged', None)
         i.pop('tagged', None)
 
-      if not cls._iface_filter(ifname, i):
+      if cls._ignore_iface(ifname, i):
         to_remove.append(ifname)
 
       if i['type'] == 'access' and i['untagged'] == 1 and not 'lag' in i and not 'descr' in i and i['shutdown']:
@@ -411,6 +422,8 @@ class OS10Box(nak.BasicGen,nak.Box):
             yield " no switchport trunk allowed vlan"
 
         elif pd['type'] == 'no switchport':
+          pass
+        elif pd['type'] == 'swi':
           pass
         else:
           raise ValueError("Unknown port %s type: %s" % (p, pd['type']))

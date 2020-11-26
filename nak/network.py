@@ -75,14 +75,16 @@ class Switch(NAKConf):
       if ifdef.get('clean', False):
         continue
       if ifdef.get('type', 'access') == 'access':
-        vlans.add(int(ifdef.get('untagged', 1)))
+        vlans.add(int(ifdef.get('untagged', Network.DEFAULT_VLAN)))
       elif ifdef['type'] == 'trunk':
         if 'untagged' in ifdef:
           vlans.add(int(ifdef['untagged']))
         vlans |= set([int(vid) for vid in ifdef.get('tagged', [])])
+      elif ifdef['type'] == 'svi':
+        vlans.add(nak.BasicParser.parseSVIName(iface))
 
     for v in vlans:
-      if not v in self.confstruct['vlans']:
+      if not (v in self.confstruct['vlans'] or v == Network.DEFAULT_VLAN):
         raise Exception('switch %s has active undefined VLAN %d' % (self.confstruct['hostname'],v))
     return sorted(list(vlans))
 
@@ -129,6 +131,8 @@ switches:
         peer_interface: GigabitEthernet0/36
         minimize: true 
   """
+
+  DEFAULT_VLAN = 1
 
   def getSwitchConfig(self, switchname):
     swdef = self.confstruct['switches'][switchname]
@@ -207,13 +211,15 @@ switches:
               logging.info("Simulating setting backbone trunk for host %s port %s", swname, bl['interface'])
             else:
               logging.debug("Setting backbone trunk for host %s port %s", swname, bl['interface'])
-              swobj.setTrunkVLANs(bl['interface'], 1, 'all')
+              swobj.setTrunkVLANs(bl['interface'], self.DEFAULT_VLAN, 'all')
               swobj.setPortMTU(bl['interface'], mtu)
           
         else: # access
           for ul in swdef.get('uplinks', []):
             if ul.get('minimize', False):
               vlans = swobj.getActiveVLANs(set([u['interface'] for u in swdef['uplinks']]))
+              if self.DEFAULT_VLAN in vlans:
+                vlans.remove(self.DEFAULT_VLAN)
             else:
               vlans = 'all'
 
@@ -221,7 +227,7 @@ switches:
               logging.info("Simulating setting uplink trunk on host %s port %s", swname, ul['interface'])
             else:
               logging.debug("Setting uplink trunk on host %s port %s", swname, ul['interface'])
-              swobj.setTrunkVLANs(ul['interface'], 1, vlans)
+              swobj.setTrunkVLANs(ul['interface'], self.DEFAULT_VLAN, vlans)
               swobj.setPortMTU(ul['interface'], mtu)
 
             peerobj = self.getSwitchConfig(ul['peer'])
@@ -229,7 +235,7 @@ switches:
               logging.info("Simulating setting downlink trunk on host %s port %s towards %s", ul['peer'], ul['peer_interface'], swname)
             else:
               logging.info("Setting downlink trunk on host %s port %s towards %s", ul['peer'], ul['peer_interface'], swname)
-              peerobj.setTrunkVLANs(ul['peer_interface'], 1, vlans)
+              peerobj.setTrunkVLANs(ul['peer_interface'], self.DEFAULT_VLAN, vlans)
               peerobj.setPortMTU(ul['peer_interface'], mtu)
               peerobj.save()
             peerobj.save()
@@ -246,22 +252,22 @@ switches:
         pd = swconf['ports'][p]
 
         if 'untagged' in pd:
-          if pd['untagged'] != 1 and not pd['untagged'] in vlans:
+          if pd['untagged'] != self.DEFAULT_VLAN and not pd['untagged'] in vlans:
             if pd.get('clear', False):
               logging.error("Pruning untagged VLAN %d on clear interface %s on switch %s", pd['untagged'], p, swname)
               del pd['untagged']
             elif pd.get('shutdown', False):
               logging.error("Pruning untagged VLAN %d on shutdown interface %s on switch %s", pd['untagged'], p, swname)
-              pd['untagged'] = 1
+              pd['untagged'] = self.DEFAULT_VLAN
             elif force:
               logging.error("Force pruning untagged VLAN %d on UP interface %s on switch %s", pd['untagged'], p, swname)
-              pd['untagged'] = 1
+              pd['untagged'] = self.DEFAULT_VLAN
             else:
               raise Exception("Can not prune untagged VLAN %d on UP interface %s on switch %s" % (pd['untagged'], p, swname))
 
         if 'tagged' in pd and not pd['tagged'] in nak.BasicGen.SYM_ALL_VLANS :
           for t in pd['tagged']:
-            if t != 1 and not t in vlans:
+            if t != self.DEFAULT_VLAN and not t in vlans:
               logging.error("Pruning tagged VLAN %d on shutdown interface %s on switch %s", t, p, swname)
               pd['tagged'].remove(t)
 
