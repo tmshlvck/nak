@@ -189,7 +189,7 @@ switches:
   def updateVLANs(self, sim=False):
     for swname, swdef, swobj in self.getSwitchesWithConf():
       if 'vlan_group' in swdef:
-        # if not swdef.get('core', False): then minimize - TODO
+        # if not swdef.get('core', False): then minimize??? - TODO
         new_vlans = self.confstruct['vlans'][swdef['vlan_group']]
         if sim or swdef.get('readonly', False):
           logging.info("Simulating setting VLANs for host %s", swname)
@@ -205,23 +205,24 @@ switches:
 
     for swname, swdef, swobj in self.getSwitchesWithConf():
       try:
-        if swdef.get('core', False):
-          for bl in swdef.get('backbone', []):
-            if sim or swdef.get('readonly', False):
-              logging.info("Simulating setting backbone trunk for host %s port %s", swname, bl['interface'])
-            else:
-              logging.debug("Setting backbone trunk for host %s port %s", swname, bl['interface'])
-              swobj.setTrunkVLANs(bl['interface'], self.DEFAULT_VLAN, 'all')
-              swobj.setPortMTU(bl['interface'], mtu)
+        for bl in swdef.get('backbone', []):
+          if sim or swdef.get('readonly', False):
+            logging.info("Simulating setting backbone trunk for host %s port %s", swname, bl['interface'])
+          else:
+            logging.debug("Setting backbone trunk for host %s port %s", swname, bl['interface'])
+            swobj.setTrunkVLANs(bl['interface'], self.DEFAULT_VLAN, 'all')
+            swobj.setPortMTU(bl['interface'], mtu)
           
-        else: # access
-          for ul in swdef.get('uplinks', []):
-            if ul.get('minimize', False):
-              vlans = swobj.getActiveVLANs(set([u['interface'] for u in swdef['uplinks']]))
-              if self.DEFAULT_VLAN in vlans:
-                vlans.remove(self.DEFAULT_VLAN)
-            else:
-              vlans = 'all'
+        for ul in swdef.get('uplinks', []):
+          if swdef.get('core', False):
+            raise Exception("Core switch %s can not have uplink %s", swname, ul['interface'])
+
+          if ul.get('minimize', False):
+            vlans = swobj.getActiveVLANs(set([u['interface'] for u in swdef['uplinks']]))
+            if self.DEFAULT_VLAN in vlans:
+              vlans.remove(self.DEFAULT_VLAN)
+          else:
+            vlans = 'all'
 
             if sim or swdef.get('readonly', False):
               logging.info("Simulating setting uplink trunk on host %s port %s", swname, ul['interface'])
