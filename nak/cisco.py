@@ -541,8 +541,10 @@ class IOSBox(nak.BasicGen,nak.Box):
       pcn = 'Port-channel%d' % pd['lag']
       if pcn in newconf['ports']:
         pd['type'] = newconf['ports'][pcn]['type']
-        pd['tagged'] = newconf['ports'][pcn]['tagged']
-        pd['untagged'] = newconf['ports'][pcn]['untagged']
+        if 'tagged' in newconf['ports'][pcn]:
+          pd['tagged'] = newconf['ports'][pcn]['tagged']
+        if 'untagged' in newconf['ports'][pcn]:
+          pd['untagged'] = newconf['ports'][pcn]['untagged']
 
     if 'type' in pd:
       if pd['type'] == 'access':
